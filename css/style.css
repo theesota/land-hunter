@@ -56,22 +56,21 @@ html, body {
 .topbar h1 { font-size: 16px; margin: 0; font-weight: 600; }
 .topbar-actions { display: flex; gap: 4px; }
 
-/* アイコン+文字ラベルの縦積みボタン */
+/* トップバーのアイコンボタン */
 .bar-btn {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  min-width: 56px;
-  padding: 6px 8px;
+  justify-content: center;
+  min-width: 44px;
+  padding: 10px;
   border: none;
   border-radius: 8px;
   background: transparent;
   color: inherit;
   cursor: pointer;
 }
-.bar-btn span { font-size: 10px; line-height: 1; }
 .bar-btn:active { background: var(--brand-dark); }
+.bar-btn .icon { width: 22px; height: 22px; }
 
 .icon-btn {
   border: none;
@@ -596,3 +595,45 @@ html, body {
 .road-chip { --chip-color: #555; }
 
 .popup-hz { display: block; margin-top: 2px; }
+
+/* ---- 設定パネル ---- */
+
+#panel-settings input[type="text"], #panel-settings input[type="search"] {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px;
+  margin-bottom: 8px;
+  font-family: inherit;
+}
+.ref-search { display: flex; gap: 8px; }
+.ref-search input { flex: 1; margin-bottom: 0; }
+.ref-search-btn {
+  border: none;
+  border-radius: 8px;
+  background: var(--brand);
+  color: #fff;
+  padding: 0 14px;
+  cursor: pointer;
+}
+.ref-results {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  border: 1px solid #eee;
+  border-radius: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+.ref-results li { padding: 10px 12px; font-size: 13px; border-bottom: 1px solid #f0f0f0; cursor: pointer; }
+.ref-results li:last-child { border-bottom: none; }
+.ref-del {
+  border: none;
+  background: none;
+  color: var(--danger);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 6px;
+}
+.popup-drive { color: var(--brand); font-weight: 600; margin-left: 6px; }

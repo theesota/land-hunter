@@ -174,6 +174,7 @@ export class MapView {
       info.address && `📍 ${escapeHtml(info.address)}`,
       info.school && `🏫 ${escapeHtml(info.school)}`,
       info.station && `🚉 ${escapeHtml(info.station)}`,
+      info.facility && `🛒 ${escapeHtml(info.facility)}`,
       roads.length && `🛣 接道: ${roads.join('・')}側`,
       (info.hz || info.hazard) && `<span class="popup-hz">${hazardHtml(info)}</span>`,
     ].filter(Boolean);
@@ -181,7 +182,10 @@ export class MapView {
     // 基準地点(自宅・駅など)までの直線距離。基準地点自身のポップアップには出さない。
     const refs = (this.spots || []).filter((s) => s.status === 'reference' && s.id !== spot.id);
     const dists = spot.status !== 'reference' && refs.length
-      ? `<div class="popup-dists">${refs.map((r) => `${escapeHtml(r.name)}まで ${this._distanceLabel(spot, r)}`).join('<br>')}</div>` : '';
+      ? `<div class="popup-dists">${refs.map((r) => {
+        const drive = `https://www.google.com/maps/dir/?api=1&origin=${r.lat},${r.lng}&destination=${spot.lat},${spot.lng}&travelmode=driving`;
+        return `${escapeHtml(r.name)}まで ${this._distanceLabel(spot, r)}<a href="${drive}" target="_blank" rel="noopener" class="popup-drive">車ルート</a>`;
+      }).join('<br>')}</div>` : '';
     const listing = spot.url
       ? `<a href="${escapeHtml(spot.url)}" target="_blank" rel="noopener" class="popup-listing">物件ページを開く</a>` : '';
     return `

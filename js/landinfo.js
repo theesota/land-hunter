@@ -197,6 +197,54 @@ export async function nearestStationAt(lat, lng) {
   return { name: best.n, line: best.l, meters: Math.round(bestDist), walkMin };
 }
 
+// ---- 周辺施設(OpenStreetMapのPOIをOverpass APIから取得) ----
+
+const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
+const FACILITY_LABELS = {
+  supermarket: 'スーパー',
+  convenience: 'コンビニ',
+  chemist: 'ドラッグストア',
+  mall: '商業施設',
+  department_store: '商業施設',
+};
+
+// 半径1.2km内の店舗を検索し、種類ごとに最寄りの1件を返す
+export async function facilitiesAt(lat, lng) {
+  const query = `[out:json][timeout:8];nwr(around:1200,${lat},${lng})[shop~"^(supermarket|convenience|chemist|mall|department_store)$"];out center 60;`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 9000);
+  try {
+    const res = await fetch(OVERPASS_URL, {
+      method: 'POST',
+      body: `data=${encodeURIComponent(query)}`,
+      signal: controller.signal,
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const best = new Map(); // ラベル -> {name, meters}
+    for (const el of data.elements || []) {
+      const tags = el.tags || {};
+      const label = FACILITY_LABELS[tags.shop];
+      const name = tags.name || tags['name:ja'] || tags.brand;
+      const pLat = el.lat ?? el.center?.lat;
+      const pLng = el.lon ?? el.center?.lon;
+      if (!label || !name || pLat === undefined) continue;
+      const meters = distanceMeters(lat, lng, pLat, pLng);
+      if (!best.has(label) || meters < best.get(label).meters) {
+        best.set(label, { name, meters });
+      }
+    }
+    return [...best.entries()].map(([label, { name, meters }]) => {
+      const walkMin = Math.ceil(meters / WALK_METERS_PER_MIN);
+      return `${label}: ${name}(徒歩約${walkMin}分)`;
+    });
+  } catch {
+    return null; // 取得失敗は「なし」ではなく判定不可
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 // ---- まとめて取得 ----
 
 // onUpdate(partialInfo)を項目が取れるたびに呼ぶ。最終的な確定値も返す。
@@ -213,6 +261,9 @@ export function collectLandInfo(lat, lng, onUpdate) {
     }),
     nearestStationAt(lat, lng).then((v) => {
       if (v) info.station = `${v.name}駅(${v.line}) 徒歩約${v.walkMin}分`;
+    }),
+    facilitiesAt(lat, lng).then((v) => {
+      if (v !== null) info.facility = v.length ? v.join(' / ') : '徒歩15分圏に主要店舗なし';
     }),
   ].map((p) => p.catch(() => {}).then(() => onUpdate && onUpdate(info)));
   return Promise.all(tasks).then(() => info);

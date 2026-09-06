@@ -50,7 +50,7 @@ const mapView = new MapView('map', {
 
 // ---- パネル開閉 ----
 
-const panels = ['#panel-layers', '#panel-list', '#panel-share'].map((s) => $(s));
+const panels = ['#panel-layers', '#panel-list', '#panel-share', '#panel-settings'].map((s) => $(s));
 
 function closePanels() {
   for (const p of panels) p.hidden = true;
@@ -66,6 +66,7 @@ function togglePanel(sel) {
 $('#btn-layers').addEventListener('click', () => togglePanel('#panel-layers'));
 $('#btn-list').addEventListener('click', () => { renderList(); togglePanel('#panel-list'); });
 $('#btn-share').addEventListener('click', () => togglePanel('#panel-share'));
+$('#btn-settings').addEventListener('click', () => { renderRefList(); togglePanel('#panel-settings'); });
 for (const btn of document.querySelectorAll('.panel-close')) {
   btn.addEventListener('click', closePanels);
 }
@@ -227,6 +228,7 @@ const INFO_ROWS = [
   ['address', '住所'],
   ['school', '学区'],
   ['station', '最寄り駅'],
+  ['facility', '周辺施設'],
   ['hazard', 'ハザード'],
 ];
 
@@ -403,6 +405,76 @@ function renderList() {
     ul.append(li);
   }
 }
+
+// ---- 設定(基準地点の管理) ----
+
+function renderRefList() {
+  const ul = $('#ref-list');
+  ul.innerHTML = '';
+  const refs = spots.filter((s) => s.status === 'reference');
+  $('#ref-empty').hidden = refs.length > 0;
+  for (const ref of refs) {
+    const li = document.createElement('li');
+    const dot = document.createElement('span');
+    dot.className = 'dot';
+    dot.style.background = statusById('reference').color;
+    const name = document.createElement('span');
+    name.className = 'spot-name';
+    name.textContent = ref.name;
+    name.addEventListener('click', () => {
+      closePanels();
+      mapView.focusSpot(ref);
+    });
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'ref-del';
+    del.textContent = '削除';
+    del.addEventListener('click', () => {
+      if (!confirm(`「${ref.name}」を削除しますか?`)) return;
+      spots = removeSpot(spots, ref.id);
+      mapView.renderSpots(spots);
+      renderRefList();
+    });
+    li.append(dot, name, del);
+    ul.append(li);
+  }
+}
+
+$('#ref-search-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const query = $('#ref-search-input').value.trim();
+  if (!query) return;
+  const resultsEl = $('#ref-results');
+  try {
+    const res = await fetch(GEOCODER_URL + encodeURIComponent(query));
+    const features = (await res.json()).slice(0, 6);
+    resultsEl.innerHTML = '';
+    if (features.length === 0) {
+      showToast('見つかりませんでした');
+      resultsEl.hidden = true;
+      return;
+    }
+    for (const f of features) {
+      const [lng, lat] = f.geometry.coordinates;
+      const li = document.createElement('li');
+      li.textContent = f.properties.title;
+      li.addEventListener('click', () => {
+        const name = $('#ref-name').value.trim() || f.properties.title;
+        spots = upsertSpot(spots, createSpot({ name, status: 'reference', lat, lng }));
+        mapView.renderSpots(spots);
+        renderRefList();
+        resultsEl.hidden = true;
+        $('#ref-name').value = '';
+        $('#ref-search-input').value = '';
+        showToast(`基準地点「${name}」を登録しました`);
+      });
+      resultsEl.append(li);
+    }
+    resultsEl.hidden = false;
+  } catch {
+    showToast('検索に失敗しました(通信環境を確認してください)');
+  }
+});
 
 // ---- 共有 ----
 

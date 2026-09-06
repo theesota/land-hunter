@@ -19,15 +19,17 @@
     <symbol id="ic-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><line x1="12" y1="1" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="1" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="23" y2="12"/></symbol>
     <symbol id="ic-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
     <symbol id="ic-close" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+    <symbol id="ic-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
     <symbol id="ic-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
   </svg>
 
   <header class="topbar">
     <h1>土地ハンター</h1>
     <div class="topbar-actions">
-      <button id="btn-layers" class="bar-btn"><svg class="icon"><use href="#ic-layers"/></svg><span>表示</span></button>
-      <button id="btn-list" class="bar-btn"><svg class="icon"><use href="#ic-list"/></svg><span>一覧</span></button>
-      <button id="btn-share" class="bar-btn"><svg class="icon"><use href="#ic-share"/></svg><span>共有</span></button>
+      <button id="btn-layers" class="bar-btn" aria-label="表示する項目"><svg class="icon"><use href="#ic-layers"/></svg></button>
+      <button id="btn-list" class="bar-btn" aria-label="保存した地点"><svg class="icon"><use href="#ic-list"/></svg></button>
+      <button id="btn-share" class="bar-btn" aria-label="共有"><svg class="icon"><use href="#ic-share"/></svg></button>
+      <button id="btn-settings" class="bar-btn" aria-label="設定"><svg class="icon"><use href="#ic-gear"/></svg></button>
     </div>
   </header>
 
@@ -125,6 +127,32 @@
       <label class="wide-btn ghost file-label">JSONファイルを読み込む
         <input type="file" id="input-import-json" accept=".json,application/json" hidden>
       </label>
+    </div>
+  </section>
+
+  <!-- 設定 パネル -->
+  <section id="panel-settings" class="panel" hidden>
+    <div class="panel-head">
+      <h2>設定</h2>
+      <button class="icon-btn panel-close" aria-label="閉じる"><svg class="icon"><use href="#ic-close"/></svg></button>
+    </div>
+    <div class="panel-body">
+      <div class="field">
+        <span class="field-label">基準地点(自宅・実家・最寄り駅など)</span>
+        <p class="note">登録しておくと、候補地ごとに「ここから何km」が自動で表示され、車ルート(Googleマップで実所要時間)もワンタップで開けます。</p>
+        <ul id="ref-list" class="spot-list"></ul>
+        <p id="ref-empty" class="note">まだ基準地点がありません。</p>
+      </div>
+      <div class="field section-divider">
+        <span class="field-label">基準地点を追加</span>
+        <input type="text" id="ref-name" placeholder="名前(例: 自宅、実家、伊勢崎駅)">
+        <form id="ref-search-form" autocomplete="off" class="ref-search">
+          <input type="search" id="ref-search-input" placeholder="住所・地名で検索" enterkeyhint="search">
+          <button type="submit" class="ref-search-btn"><svg class="icon"><use href="#ic-search"/></svg></button>
+        </form>
+        <ul id="ref-results" class="ref-results" hidden></ul>
+        <p class="note">地図を直接タップして、ステータス「基準地点」で保存してもOKです。</p>
+      </div>
     </div>
   </section>
 
