@@ -54,8 +54,13 @@
   </div>
 
   <!-- タップした場所の登録確認 -->
+  <div id="pick-hint" class="pick-hint" hidden>
+    <span id="pick-hint-text"></span>
+    <button type="button" id="btn-pick-cancel" aria-label="やめる"><svg class="icon"><use href="#ic-close"/></svg></button>
+  </div>
+
   <div id="confirm-bar" class="confirm-bar" hidden>
-    <span>この場所を登録しますか?</span>
+    <span id="confirm-text">この場所を登録しますか?</span>
     <button type="button" id="btn-confirm-add" class="primary">登録する</button>
     <button type="button" id="btn-confirm-cancel" class="ghost" aria-label="やめる">
       <svg class="icon"><use href="#ic-close"/></svg>
@@ -139,6 +144,7 @@
           <button type="submit" class="ref-search-btn" aria-label="検索"><svg class="icon"><use href="#ic-search"/></svg></button>
         </form>
         <ul id="ref-results" class="ref-results" hidden></ul>
+        <button type="button" id="btn-ref-pick" class="wide-btn ghost">地図で選ぶ(ピンポイント)</button>
       </div>
     </div>
   </section>

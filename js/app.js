@@ -1,7 +1,7 @@
 // UIの結線。地点データの出し入れはすべてdata.js経由(クラウド同期/ローカルの違いを吸収)。
 
 import { HAZARD_LAYERS, SCHOOL_LAYERS, STATUSES, statusById, GEOCODER_URL, LISTINGS_LINK } from './config.js';
-import { collectLandInfo, hazardHtml, DEPTH_COLORS } from './landinfo.js';
+import { collectLandInfo, hazardHtml, DEPTH_COLORS, searchStations } from './landinfo.js';
 import { createSpot } from './store.js';
 import {
   initData, getSpots, getMode, getInviteUrl,
@@ -11,6 +11,8 @@ import { MapView } from './map.js';
 
 let spots = [];
 let pendingLatLng = null; // 新規追加時のタップ位置
+let refPickMode = false;  // 設定パネルの「地図で選ぶ」で基準地点を指定中
+let refPickName = '';
 let currentLandInfo = null; // 新規登録時に自動取得した土地情報
 
 const $ = (sel) => document.querySelector(sel);
@@ -22,6 +24,9 @@ const mapView = new MapView('map', {
     closePanels();
     pendingLatLng = latlng;
     mapView.setPendingMarker(latlng);
+    $('#confirm-text').textContent = refPickMode ? `ここを「${refPickName}」にしますか?` : 'この場所を登録しますか?';
+    $('#btn-confirm-add').textContent = refPickMode ? 'ここにする' : '登録する';
+    $('#pick-hint').hidden = true; // 確認バーが出たら案内は引っ込める
     $('#confirm-bar').hidden = false;
   },
   onMarkerEdit: (id) => {
@@ -114,6 +119,21 @@ for (const radio of document.querySelectorAll('input[name="basemap"]')) {
 
 // ---- 地域検索 ----
 
+// 駅名(同梱データ)と住所(国土地理院)をまとめて引く。
+// 「本庄駅」のようなピンポイント指定は住所検索だけでは市までしか返らないため。
+async function searchPlaces(query) {
+  const [stations, geo] = await Promise.all([
+    searchStations(query).catch(() => []),
+    fetch(GEOCODER_URL + encodeURIComponent(query)).then((r) => r.json()).catch(() => []),
+  ]);
+  const geoItems = (Array.isArray(geo) ? geo : []).map((f) => ({
+    title: f.properties.title,
+    lat: f.geometry.coordinates[1],
+    lng: f.geometry.coordinates[0],
+  }));
+  return [...stations, ...geoItems].slice(0, 8);
+}
+
 const searchResultsEl = $('#search-results');
 
 function hideSearchResults() {
@@ -126,27 +146,24 @@ $('#search-form').addEventListener('submit', async (e) => {
   const query = $('#search-input').value.trim();
   if (!query) return;
   try {
-    const res = await fetch(GEOCODER_URL + encodeURIComponent(query));
-    const features = await res.json();
-    renderSearchResults(features.slice(0, 8));
+    renderSearchResults(await searchPlaces(query));
   } catch {
     showToast('検索に失敗しました(通信環境を確認してください)');
   }
 });
 
-function renderSearchResults(features) {
+function renderSearchResults(places) {
   searchResultsEl.innerHTML = '';
-  if (features.length === 0) {
+  if (places.length === 0) {
     showToast('見つかりませんでした');
     hideSearchResults();
     return;
   }
-  for (const f of features) {
-    const [lng, lat] = f.geometry.coordinates;
+  for (const place of places) {
     const li = document.createElement('li');
-    li.textContent = f.properties.title;
+    li.textContent = place.title;
     li.addEventListener('click', () => {
-      mapView.focusSearchResult(lat, lng, f.properties.title);
+      mapView.focusSearchResult(place.lat, place.lng, place.title);
       hideSearchResults();
       $('#search-input').blur();
     });
@@ -165,15 +182,51 @@ function hideConfirmBar() {
   mapView.clearPendingMarker();
 }
 
-$('#btn-confirm-add').addEventListener('click', () => {
+$('#btn-confirm-add').addEventListener('click', async () => {
   $('#confirm-bar').hidden = true;
-  openSpotSheet(null);
+  if (!refPickMode) {
+    openSpotSheet(null);
+    return;
+  }
+  const latlng = pendingLatLng;
+  const name = refPickName;
+  exitRefPick();
+  try {
+    await saveSpot(createSpot({ name, status: 'reference', lat: latlng.lat, lng: latlng.lng }));
+    $('#ref-name').value = '';
+    showToast(`基準地点「${name}」を登録しました`);
+    renderRefList();
+    $('#panel-settings').hidden = false;
+  } catch {
+    showToast('登録に失敗しました');
+  }
 });
 
 $('#btn-confirm-cancel').addEventListener('click', () => {
-  pendingLatLng = null;
-  hideConfirmBar();
+  if (refPickMode) exitRefPick();
+  else {
+    pendingLatLng = null;
+    hideConfirmBar();
+  }
 });
+
+// 「地図で選ぶ」: 住所検索では出せないピンポイントな場所(駅の出口・実家など)を指定する
+function exitRefPick() {
+  refPickMode = false;
+  pendingLatLng = null;
+  $('#pick-hint').hidden = true;
+  hideConfirmBar();
+}
+
+$('#btn-ref-pick').addEventListener('click', () => {
+  refPickName = $('#ref-name').value.trim() || '基準地点';
+  refPickMode = true;
+  closePanels();
+  $('#pick-hint-text').textContent = `地図をタップして「${refPickName}」の場所を選んでください`;
+  $('#pick-hint').hidden = false;
+});
+
+$('#btn-pick-cancel').addEventListener('click', exitRefPick);
 
 // ---- 現在地 ----
 
@@ -460,20 +513,19 @@ $('#ref-search-form').addEventListener('submit', async (e) => {
   if (!query) return;
   const resultsEl = $('#ref-results');
   try {
-    const res = await fetch(GEOCODER_URL + encodeURIComponent(query));
-    const features = (await res.json()).slice(0, 6);
+    const places = (await searchPlaces(query)).slice(0, 6);
     resultsEl.innerHTML = '';
-    if (features.length === 0) {
+    if (places.length === 0) {
       showToast('見つかりませんでした');
       resultsEl.hidden = true;
       return;
     }
-    for (const f of features) {
-      const [lng, lat] = f.geometry.coordinates;
+    for (const place of places) {
+      const { lat, lng } = place;
       const li = document.createElement('li');
-      li.textContent = f.properties.title;
+      li.textContent = place.title;
       li.addEventListener('click', async () => {
-        const name = $('#ref-name').value.trim() || f.properties.title;
+        const name = $('#ref-name').value.trim() || place.title;
         resultsEl.hidden = true;
         $('#ref-name').value = '';
         $('#ref-search-input').value = '';

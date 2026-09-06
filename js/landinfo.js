@@ -187,6 +187,18 @@ function distanceMeters(lat1, lng1, lat2, lng2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+// 駅名での検索。国土地理院の住所検索は駅を点で返さない(「本庄駅」→「本庄市」になる)ため、
+// 同梱の駅データ(国土数値情報N02)から名前一致で拾って補う。
+export async function searchStations(query) {
+  const q = query.trim().replace(/駅$/, '');
+  if (!q) return [];
+  const stations = await getJson('data/stations.json').catch(() => []);
+  return stations
+    .filter((s) => s.n.includes(q))
+    .slice(0, 5)
+    .map((s) => ({ title: `${s.n}駅(${s.l})`, lat: s.lat, lng: s.lng }));
+}
+
 export async function nearestStationAt(lat, lng) {
   const stations = await getJson('data/stations.json');
   let best = null;

@@ -683,3 +683,30 @@ html, body {
 }
 .sync-state.on { background: rgba(255, 255, 255, 0.25); }
 .sync-state.off { background: #b3541e; }
+
+/* 基準地点を地図で選んでいる最中の案内 */
+.pick-hint {
+  position: fixed;
+  top: 120px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--brand);
+  color: #fff;
+  border-radius: 12px;
+  font-size: 13px;
+  z-index: 960;
+  box-shadow: var(--shadow);
+}
+.pick-hint span { flex: 1; }
+.pick-hint button {
+  border: none;
+  background: transparent;
+  color: #fff;
+  display: flex;
+  padding: 2px;
+  cursor: pointer;
+}
