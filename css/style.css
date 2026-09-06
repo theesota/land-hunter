@@ -507,18 +507,50 @@ html, body {
 
 /* ---- 登録確認ポップアップ / 土地情報 ---- */
 
-.register-prompt { text-align: center; }
-.register-prompt p { margin: 4px 0 10px; font-size: 14px; }
-.register-prompt button {
-  width: 100%;
-  padding: 10px 20px;
+/* タップした場所の登録確認バー(地図の上に重ならない位置に出す) */
+.confirm-bar {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(20px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  z-index: 1150;
+}
+.confirm-bar span { flex: 1; font-size: 14px; }
+.confirm-bar button {
   border: none;
   border-radius: 10px;
-  background: var(--brand);
-  color: #fff;
+  padding: 10px 16px;
   font-size: 14px;
   cursor: pointer;
 }
+.confirm-bar .primary { background: var(--brand); color: #fff; }
+.confirm-bar .ghost {
+  background: #f0f0f0;
+  color: #555;
+  display: flex;
+  align-items: center;
+  padding: 10px;
+}
+
+/* 登録前の仮マーカー */
+.pending-pin {
+  width: 22px;
+  height: 22px;
+  background: #fff;
+  border: 3px solid var(--brand);
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 1px 2px 6px rgba(0, 0, 0, 0.4);
+  animation: pending-pop 0.18s ease-out;
+}
+@keyframes pending-pop { from { transform: rotate(-45deg) scale(0.5); } }
 
 .land-info {
   background: #f4f7f6;
@@ -637,3 +669,17 @@ html, body {
   padding: 6px;
 }
 .popup-drive { color: var(--brand); font-weight: 600; margin-left: 6px; }
+
+/* 同期状態のバッジ */
+.sync-state {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 500;
+  background: rgba(255, 255, 255, 0.2);
+  vertical-align: 2px;
+}
+.sync-state.on { background: rgba(255, 255, 255, 0.25); }
+.sync-state.off { background: #b3541e; }

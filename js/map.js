@@ -85,10 +85,12 @@ export class MapView {
       const res = await fetch(def.file);
       const geojson = await res.json();
       const labels = L.layerGroup();
+      // interactive:false が重要。校区の面がタップを吸うと、学区表示中に
+      // 地図をタップして地点登録ができなくなる(校名はラベルで確認できる)。
       const polygons = L.geoJSON(geojson, {
-        style: { color: def.color, weight: 2, fillColor: def.color, fillOpacity: 0.06, dashArray: '4 3', bubblingMouseEvents: false },
+        interactive: false,
+        style: { color: def.color, weight: 2, fillColor: def.color, fillOpacity: 0.06, dashArray: '4 3' },
         onEachFeature: (feature, l) => {
-          l.bindPopup(`${escapeHtml(feature.properties.name)}区<br><span class="popup-sub">${escapeHtml(feature.properties.address)}</span>`);
           // 校区の中心に学校名ラベル。中心置きなら形が歪な校区でもエリア外に出にくい。
           labels.addLayer(L.marker(l.getBounds().getCenter(), {
             interactive: false,
@@ -220,23 +222,24 @@ export class MapView {
     if (marker) marker.openPopup();
   }
 
-  // タップ地点に「登録しますか?」の確認ポップアップを出す
-  showRegisterPrompt(latlng, onConfirm) {
-    const el = document.createElement('div');
-    el.className = 'register-prompt';
-    el.innerHTML = '<p>この場所を登録しますか?</p>';
-    const btn = document.createElement('button');
-    btn.type = 'button';
-    btn.textContent = '登録する';
-    btn.addEventListener('click', () => {
-      this.map.closePopup();
-      onConfirm(latlng);
-    });
-    el.append(btn);
-    L.popup({ closeButton: true, autoClose: true })
-      .setLatLng(latlng)
-      .setContent(el)
-      .openOn(this.map);
+  // タップ地点に仮マーカーを置く。確認UIは画面下のバー(app.js)が担当し、
+  // 地図の上に重なるポップアップを使わないことで次のタップを塞がない。
+  setPendingMarker(latlng) {
+    if (this.pendingMarker) {
+      this.pendingMarker.setLatLng(latlng);
+      return;
+    }
+    this.pendingMarker = L.marker(latlng, {
+      interactive: false,
+      icon: L.divIcon({ className: 'pending-pin-wrap', html: '<div class="pending-pin"></div>', iconSize: [26, 34], iconAnchor: [13, 34] }),
+    }).addTo(this.map);
+  }
+
+  clearPendingMarker() {
+    if (this.pendingMarker) {
+      this.map.removeLayer(this.pendingMarker);
+      this.pendingMarker = null;
+    }
   }
 
   // 検索結果へ移動。一時マーカーを置いて場所を分かりやすくする(次の検索で消える)。

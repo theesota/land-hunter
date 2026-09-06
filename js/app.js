@@ -1,19 +1,15 @@
-// UIの結線。状態(spots)を持つのはここだけで、map/store/shareを組み合わせる。
+// UIの結線。地点データの出し入れはすべてdata.js経由(クラウド同期/ローカルの違いを吸収)。
 
 import { HAZARD_LAYERS, SCHOOL_LAYERS, STATUSES, statusById, GEOCODER_URL, LISTINGS_LINK } from './config.js';
 import { collectLandInfo, hazardHtml, DEPTH_COLORS } from './landinfo.js';
+import { createSpot } from './store.js';
 import {
-  compressImage, addPhoto, getPhotos, deletePhoto, deletePhotosForSpot, getAllPhotos, importPhotos,
-} from './photos.js';
-import {
-  loadSpots, createSpot, upsertSpot, removeSpot, mergeSpots,
-} from './store.js';
-import {
-  buildShareUrl, parseShareHash, clearShareHash, exportJson, importJsonFile,
-} from './share.js';
+  initData, getSpots, getMode, getInviteUrl,
+  saveSpot, deleteSpot, listPhotos, addPhoto, deletePhoto, compressImage,
+} from './data.js';
 import { MapView } from './map.js';
 
-let spots = loadSpots();
+let spots = [];
 let pendingLatLng = null; // 新規追加時のタップ位置
 let currentLandInfo = null; // 新規登録時に自動取得した土地情報
 
@@ -21,13 +17,12 @@ const $ = (sel) => document.querySelector(sel);
 
 const mapView = new MapView('map', {
   onMapClick: (latlng) => {
-    // タップ → 確認 → 登録画面。編集シートやパネルが開いているときは誤操作防止で出さない
+    // タップ → 画面下の確認バー → 登録画面。編集中は誤操作防止で反応しない
     if (!$('#sheet-spot').hidden) return;
     closePanels();
-    mapView.showRegisterPrompt(latlng, (ll) => {
-      pendingLatLng = ll;
-      openSpotSheet(null);
-    });
+    pendingLatLng = latlng;
+    mapView.setPendingMarker(latlng);
+    $('#confirm-bar').hidden = false;
   },
   onMarkerEdit: (id) => {
     const spot = spots.find((s) => s.id === id);
@@ -36,7 +31,7 @@ const mapView = new MapView('map', {
   onPopupOpen: async (spot, popupEl) => {
     const box = popupEl.querySelector('.popup-photos');
     if (!box) return;
-    const photos = await getPhotos(spot.id).catch(() => []);
+    const photos = await listPhotos(spot.id);
     box.innerHTML = '';
     for (const photo of photos) {
       const img = document.createElement('img');
@@ -163,6 +158,23 @@ function renderSearchResults(features) {
 // 地図を触ったら結果リストを閉じる
 $('#map').addEventListener('pointerdown', hideSearchResults);
 
+// ---- 登録確認バー ----
+
+function hideConfirmBar() {
+  $('#confirm-bar').hidden = true;
+  mapView.clearPendingMarker();
+}
+
+$('#btn-confirm-add').addEventListener('click', () => {
+  $('#confirm-bar').hidden = true;
+  openSpotSheet(null);
+});
+
+$('#btn-confirm-cancel').addEventListener('click', () => {
+  pendingLatLng = null;
+  hideConfirmBar();
+});
+
 // ---- 現在地 ----
 
 $('#btn-locate').addEventListener('click', () => {
@@ -277,7 +289,7 @@ async function openSpotSheet(spot) {
   setFormRating(spot ? spot.rating : 0);
   setFormRoads(spot ? spot.roads : []);
   removedPhotoIds = [];
-  formPhotos = spot ? await getPhotos(spot.id).catch(() => []) : [];
+  formPhotos = spot ? await listPhotos(spot.id) : [];
   renderPhotoThumbs();
   $('#btn-spot-delete').hidden = !spot;
   $('#sheet-spot').hidden = false;
@@ -334,6 +346,7 @@ $('#photo-viewer').addEventListener('click', () => {
 function closeSpotSheet() {
   $('#sheet-spot').hidden = true;
   pendingLatLng = null;
+  mapView.clearPendingMarker();
 }
 
 $('#spot-form').addEventListener('submit', async (e) => {
@@ -348,39 +361,41 @@ $('#spot-form').addEventListener('submit', async (e) => {
     roads: formRoads,
   };
   let savedId = id;
-  if (id) {
-    const cur = spots.find((s) => s.id === id);
-    spots = upsertSpot(spots, { ...cur, ...fields });
-  } else if (pendingLatLng) {
-    const spot = createSpot({
-      ...fields, lat: pendingLatLng.lat, lng: pendingLatLng.lng, info: currentLandInfo,
-    });
-    spots = upsertSpot(spots, spot);
-    savedId = spot.id;
-  }
-  // 写真の追加/削除を確定
+  const photosToSave = [...formPhotos];
+  const photosToRemove = [...removedPhotoIds];
+  const latlng = pendingLatLng; // シートを閉じるとクリアされるので先に退避
+  closeSpotSheet();
   try {
-    for (const pid of removedPhotoIds) await deletePhoto(pid);
-    for (const photo of formPhotos) {
+    if (id) {
+      const cur = spots.find((s) => s.id === id);
+      await saveSpot({ ...cur, ...fields });
+    } else if (latlng) {
+      const spot = createSpot({
+        ...fields, lat: latlng.lat, lng: latlng.lng, info: currentLandInfo,
+      });
+      await saveSpot(spot);
+      savedId = spot.id;
+    }
+    for (const pid of photosToRemove) await deletePhoto(pid);
+    for (const photo of photosToSave) {
       if (!photo.id && savedId) await addPhoto(savedId, photo.dataUrl);
     }
+    showToast('保存しました');
   } catch {
-    showToast('写真の保存に失敗しました');
+    showToast('保存に失敗しました(通信状況を確認してください)');
   }
-  closeSpotSheet();
-  mapView.renderSpots(spots);
-  showToast('保存しました');
 });
 
 $('#btn-spot-cancel').addEventListener('click', closeSpotSheet);
-$('#btn-spot-delete').addEventListener('click', () => {
+$('#btn-spot-delete').addEventListener('click', async () => {
   const id = $('#spot-id').value;
-  if (id && confirm('この地点を削除しますか?')) {
-    spots = removeSpot(spots, id);
-    deletePhotosForSpot(id).catch(() => {});
-    closeSpotSheet();
-    mapView.renderSpots(spots);
+  if (!id || !confirm('この地点を削除しますか?')) return;
+  closeSpotSheet();
+  try {
+    await deleteSpot(id);
     showToast('削除しました');
+  } catch {
+    showToast('削除に失敗しました');
   }
 });
 
@@ -430,11 +445,9 @@ function renderRefList() {
     del.type = 'button';
     del.className = 'ref-del';
     del.textContent = '削除';
-    del.addEventListener('click', () => {
+    del.addEventListener('click', async () => {
       if (!confirm(`「${ref.name}」を削除しますか?`)) return;
-      spots = removeSpot(spots, ref.id);
-      mapView.renderSpots(spots);
-      renderRefList();
+      await deleteSpot(ref.id).catch(() => showToast('削除に失敗しました'));
     });
     li.append(dot, name, del);
     ul.append(li);
@@ -459,14 +472,12 @@ $('#ref-search-form').addEventListener('submit', async (e) => {
       const [lng, lat] = f.geometry.coordinates;
       const li = document.createElement('li');
       li.textContent = f.properties.title;
-      li.addEventListener('click', () => {
+      li.addEventListener('click', async () => {
         const name = $('#ref-name').value.trim() || f.properties.title;
-        spots = upsertSpot(spots, createSpot({ name, status: 'reference', lat, lng }));
-        mapView.renderSpots(spots);
-        renderRefList();
         resultsEl.hidden = true;
         $('#ref-name').value = '';
         $('#ref-search-input').value = '';
+        await saveSpot(createSpot({ name, status: 'reference', lat, lng }));
         showToast(`基準地点「${name}」を登録しました`);
       });
       resultsEl.append(li);
@@ -477,71 +488,28 @@ $('#ref-search-form').addEventListener('submit', async (e) => {
   }
 });
 
-// ---- 共有 ----
+// ---- 共有(招待リンク) ----
 
+// 招待リンクは短い固定URL。受け取った人が開くだけで同じボードに参加でき、
+// 以降はお互いの編集がリアルタイムで反映される。
 $('#btn-copy-link').addEventListener('click', async () => {
+  const url = getInviteUrl();
   try {
-    await navigator.clipboard.writeText(buildShareUrl(spots));
-    showToast('共有リンクをコピーしました');
+    await navigator.clipboard.writeText(url);
+    showToast('招待リンクをコピーしました');
   } catch {
-    prompt('このリンクをコピーして送ってください', buildShareUrl(spots));
+    prompt('このリンクを送ってください', url);
   }
 });
 
 $('#btn-share-native').addEventListener('click', () => {
-  const url = buildShareUrl(spots);
+  const url = getInviteUrl();
   if (navigator.share) {
-    navigator.share({ title: '土地ハンター 共有', url }).catch(() => {});
+    navigator.share({ title: '土地ハンター', text: '土地探しの地図を共有します', url }).catch(() => {});
   } else {
-    prompt('このリンクをコピーして送ってください', url);
+    prompt('このリンクを送ってください', url);
   }
 });
-
-$('#btn-export-json').addEventListener('click', async () => {
-  const photos = await getAllPhotos().catch(() => []);
-  exportJson(spots, photos);
-});
-
-$('#input-import-json').addEventListener('change', async (e) => {
-  const file = e.target.files[0];
-  if (!file) return;
-  try {
-    const { spots: incoming, photos } = await importJsonFile(file);
-    applyImport(incoming);
-    if (photos.length) {
-      const added = await importPhotos(photos).catch(() => 0);
-      if (added) showToast(`写真${added}枚を取り込みました`);
-    }
-  } catch {
-    showToast('JSONの読み込みに失敗しました');
-  }
-  e.target.value = '';
-});
-
-function applyImport(incoming) {
-  const result = mergeSpots(spots, incoming);
-  spots = result.spots;
-  mapView.renderSpots(spots);
-  showToast(`取り込み完了: 追加${result.added}件 / 更新${result.updated}件`);
-}
-
-// 共有リンクで開いた場合はバナーで確認してから取り込む
-const sharedSpots = parseShareHash();
-if (sharedSpots && sharedSpots.length > 0) {
-  $('#import-banner-text').textContent = `共有された${sharedSpots.length}件の地点があります`;
-  $('#import-banner').hidden = false;
-  $('#btn-import-yes').addEventListener('click', () => {
-    applyImport(sharedSpots);
-    $('#import-banner').hidden = true;
-    clearShareHash();
-  });
-  $('#btn-import-no').addEventListener('click', () => {
-    $('#import-banner').hidden = true;
-    clearShareHash();
-  });
-} else if (location.hash) {
-  clearShareHash();
-}
 
 // ---- toast ----
 
@@ -554,5 +522,26 @@ function showToast(msg) {
   toastTimer = setTimeout(() => { t.hidden = true; }, 2500);
 }
 
-// 初期描画
-mapView.renderSpots(spots);
+// ---- 起動 ----
+
+function applySpots(next) {
+  spots = next;
+  mapView.renderSpots(spots);
+  if (!$('#panel-list').hidden) renderList();
+  if (!$('#panel-settings').hidden) renderRefList();
+}
+
+initData({
+  onSpots: applySpots,
+  onNotice: showToast,
+}).then(({ mode, joined }) => {
+  const badge = $('#sync-state');
+  if (mode === 'cloud') {
+    badge.textContent = '同期中';
+    badge.className = 'sync-state on';
+    if (joined) showToast('共有ボードに参加しました');
+  } else {
+    badge.textContent = 'この端末のみ';
+    badge.className = 'sync-state off';
+  }
+});

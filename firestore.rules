@@ -1,0 +1,23 @@
+rules_version = '2';
+
+// 土地ハンターのアクセス制御。
+// ログインなしで家族が使えるように「推測不可能なボードID(招待リンク)を
+// 知っている人だけが読み書きできる」鍵付きURL方式にしている。
+// ・boards直下のlist(一覧取得)を許可しないので、ボードIDの総当たり収集はできない
+// ・ボードIDは128bit乱数(22文字)なので推測は事実上不可能
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /boards/{boardId} {
+      // getのみ許可(listは不許可 = ボードIDの列挙を防ぐ)
+      allow get, write: if boardId.size() >= 20;
+
+      // 地点と写真は、ボードIDを知っている人だけが読み書きできる
+      match /spots/{spotId} {
+        allow read, write: if boardId.size() >= 20;
+      }
+      match /photos/{photoId} {
+        allow read, write: if boardId.size() >= 20;
+      }
+    }
+  }
+}

@@ -37,7 +37,14 @@ function genId() {
   return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
-// 撮影画像をアプリ保存用に縮小圧縮する
+export function newPhotoId() {
+  return genId();
+}
+
+// 撮影画像をアプリ保存用に縮小圧縮する。
+// クラウド同期では1枚=1ドキュメント(上限1MB)なので、収まるまで品質を落とす。
+const MAX_PHOTO_BYTES = 900 * 1024;
+
 export async function compressImage(file, maxDim = 1280, quality = 0.8) {
   const bmp = await createImageBitmap(file);
   const scale = Math.min(1, maxDim / Math.max(bmp.width, bmp.height));
@@ -46,7 +53,13 @@ export async function compressImage(file, maxDim = 1280, quality = 0.8) {
   canvas.height = Math.round(bmp.height * scale);
   canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
   bmp.close();
-  return canvas.toDataURL('image/jpeg', quality);
+  let q = quality;
+  let dataUrl = canvas.toDataURL('image/jpeg', q);
+  while (dataUrl.length > MAX_PHOTO_BYTES && q > 0.3) {
+    q -= 0.15;
+    dataUrl = canvas.toDataURL('image/jpeg', q);
+  }
+  return dataUrl;
 }
 
 export async function addPhoto(spotId, dataUrl) {
@@ -75,19 +88,4 @@ export async function deletePhotosForSpot(spotId) {
 export async function getAllPhotos() {
   const db = await openDb();
   return reqToPromise(tx(db, 'readonly').getAll());
-}
-
-// JSONインポート用。既にあるidはスキップして重複を防ぐ。
-export async function importPhotos(photos) {
-  const db = await openDb();
-  let added = 0;
-  for (const p of photos) {
-    if (!p || typeof p.id !== 'string' || typeof p.dataUrl !== 'string') continue;
-    const exists = await reqToPromise(tx(db, 'readonly').get(p.id));
-    if (!exists) {
-      await reqToPromise(tx(db, 'readwrite').add(p));
-      added++;
-    }
-  }
-  return added;
 }

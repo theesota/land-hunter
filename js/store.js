@@ -1,6 +1,6 @@
 // 地点データの保持と永続化。
-// データは端末のlocalStorageに保存し、共有はshare.jsのリンク経由でマージする。
-// 同じidの地点はupdatedAtが新しい方を採用する(=後から編集した内容が勝つ)。
+// 端末内保存(クラウド同期のオフラインキャッシュ、および未接続時の保存先)。
+// 共有はdata.js/sync.js(Firestore)が担当する。
 
 const SPOTS_KEY = 'tasobow.landscout.spots.v1';
 const VIEW_KEY = 'tasobow.landscout.view.v1';
@@ -22,6 +22,11 @@ export function loadSpots() {
 
 function saveSpots(spots) {
   localStorage.setItem(SPOTS_KEY, JSON.stringify(spots));
+}
+
+// クラウド同期時のオフライン用キャッシュ書き込み
+export function saveSpotsLocal(spots) {
+  saveSpots(spots);
 }
 
 export function isValidSpot(s) {
@@ -59,27 +64,6 @@ export function removeSpot(spots, id) {
   const next = spots.filter((s) => s.id !== id);
   saveSpots(next);
   return next;
-}
-
-// 共有リンク/JSONからの取り込み。戻り値は { spots, added, updated }。
-export function mergeSpots(spots, incoming) {
-  const byId = new Map(spots.map((s) => [s.id, s]));
-  let added = 0;
-  let updated = 0;
-  for (const inc of incoming) {
-    if (!isValidSpot(inc)) continue;
-    const cur = byId.get(inc.id);
-    if (!cur) {
-      byId.set(inc.id, inc);
-      added++;
-    } else if ((inc.updatedAt || 0) > (cur.updatedAt || 0)) {
-      byId.set(inc.id, inc);
-      updated++;
-    }
-  }
-  const next = [...byId.values()];
-  saveSpots(next);
-  return { spots: next, added, updated };
 }
 
 // 最後に見ていた地図位置(次回起動時の初期表示に使う)

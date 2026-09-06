@@ -24,7 +24,7 @@
   </svg>
 
   <header class="topbar">
-    <h1>土地ハンター</h1>
+    <h1>土地ハンター<span id="sync-state" class="sync-state">…</span></h1>
     <div class="topbar-actions">
       <button id="btn-layers" class="bar-btn" aria-label="表示する項目"><svg class="icon"><use href="#ic-layers"/></svg></button>
       <button id="btn-list" class="bar-btn" aria-label="保存した地点"><svg class="icon"><use href="#ic-list"/></svg></button>
@@ -53,16 +53,18 @@
     </svg>
   </div>
 
+  <!-- タップした場所の登録確認 -->
+  <div id="confirm-bar" class="confirm-bar" hidden>
+    <span>この場所を登録しますか?</span>
+    <button type="button" id="btn-confirm-add" class="primary">登録する</button>
+    <button type="button" id="btn-confirm-cancel" class="ghost" aria-label="やめる">
+      <svg class="icon"><use href="#ic-close"/></svg>
+    </button>
+  </div>
+
   <!-- 地図上のフローティング操作 -->
   <div class="fab-stack">
     <button id="btn-locate" class="fab" title="現在地"><svg class="icon"><use href="#ic-locate"/></svg></button>
-  </div>
-
-  <!-- 共有リンクを開いたときの取り込みバナー -->
-  <div id="import-banner" class="banner" hidden>
-    <span id="import-banner-text"></span>
-    <button id="btn-import-yes">取り込む</button>
-    <button id="btn-import-no" class="ghost">閉じる</button>
   </div>
 
   <!-- ハザードレイヤ パネル -->
@@ -112,15 +114,9 @@
       <button class="icon-btn panel-close" aria-label="閉じる"><svg class="icon"><use href="#ic-close"/></svg></button>
     </div>
     <div class="panel-body">
-      <p class="note">リンクを送ると相手側に地点を取り込めます(写真はJSON書き出しで)。</p>
-      <button id="btn-copy-link" class="wide-btn">共有リンクをコピー</button>
-      <button id="btn-share-native" class="wide-btn">LINE等で送る…</button>
-      <hr>
-      <p class="note">バックアップ / まとめて移行:</p>
-      <button id="btn-export-json" class="wide-btn ghost">JSONファイルに書き出す</button>
-      <label class="wide-btn ghost file-label">JSONファイルを読み込む
-        <input type="file" id="input-import-json" accept=".json,application/json" hidden>
-      </label>
+      <p class="note">このリンクを送った相手と、地点・写真がリアルタイムで共有されます。</p>
+      <button id="btn-share-native" class="wide-btn">LINE等で招待リンクを送る</button>
+      <button id="btn-copy-link" class="wide-btn ghost">リンクをコピー</button>
     </div>
   </section>
 
