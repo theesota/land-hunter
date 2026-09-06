@@ -36,7 +36,9 @@ export class MapView {
       if (def.defaultOn) this.hazardLayers[def.id].addTo(this.map);
     }
 
-    this.schoolLayers = new Map(); // id -> L.GeoJSON(初回表示時に読み込む)
+    this.schoolLayers = new Map(); // id -> {polygons, labels, visible}(初回表示時に読み込む)
+    // ズームを引いたときは学校名ラベルを消して地図の見通しを保つ
+    this.map.on('zoomend', () => this._updateSchoolLabels());
 
     this.markers = new Map(); // spot.id -> L.Marker
     this.onMarkerEdit = onMarkerEdit;
@@ -68,20 +70,43 @@ export class MapView {
 
   // 学区レイヤの表示切替。GeoJSONは初回だけfetchしてキャッシュする。
   async setSchoolVisible(id, visible) {
-    let layer = this.schoolLayers.get(id);
-    if (!layer) {
+    let entry = this.schoolLayers.get(id);
+    if (!entry) {
       const def = SCHOOL_LAYERS.find((d) => d.id === id);
       const res = await fetch(def.file);
       const geojson = await res.json();
-      layer = L.geoJSON(geojson, {
+      const labels = L.layerGroup();
+      const polygons = L.geoJSON(geojson, {
         style: { color: def.color, weight: 2, fillColor: def.color, fillOpacity: 0.06, dashArray: '4 3' },
-        onEachFeature: (feature, l) => l.bindPopup(`${escapeHtml(feature.properties.name)}区<br><span class="popup-sub">${escapeHtml(feature.properties.address)}</span>`),
+        onEachFeature: (feature, l) => {
+          l.bindPopup(`${escapeHtml(feature.properties.name)}区<br><span class="popup-sub">${escapeHtml(feature.properties.address)}</span>`);
+          // 校区の中心に学校名ラベル。中心置きなら形が歪な校区でもエリア外に出にくい。
+          labels.addLayer(L.marker(l.getBounds().getCenter(), {
+            interactive: false,
+            icon: L.divIcon({
+              className: 'school-label-wrap',
+              iconSize: null,
+              html: `<span class="school-label" style="color:${def.color}">${escapeHtml(feature.properties.name)}</span>`,
+            }),
+          }));
+        },
         attribution: '<a href="https://nlftp.mlit.go.jp/ksj/" target="_blank">国土数値情報</a>',
       });
-      this.schoolLayers.set(id, layer);
+      entry = { polygons, labels, visible: false };
+      this.schoolLayers.set(id, entry);
     }
-    if (visible) layer.addTo(this.map);
-    else this.map.removeLayer(layer);
+    entry.visible = visible;
+    if (visible) entry.polygons.addTo(this.map);
+    else this.map.removeLayer(entry.polygons);
+    this._updateSchoolLabels();
+  }
+
+  _updateSchoolLabels() {
+    const zoomedIn = this.map.getZoom() >= 12;
+    for (const entry of this.schoolLayers.values()) {
+      if (entry.visible && zoomedIn) entry.labels.addTo(this.map);
+      else this.map.removeLayer(entry.labels);
+    }
   }
 
   setHazardOpacity(opacity) {
