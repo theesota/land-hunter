@@ -163,20 +163,6 @@ html, body {
 .fab-primary .icon { width: 28px; height: 28px; }
 .fab.active { outline: 3px solid #ffb43a; }
 
-.add-hint {
-  position: fixed;
-  bottom: 96px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.75);
-  color: #fff;
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-size: 13px;
-  z-index: 900;
-  white-space: nowrap;
-}
-
 /* ---- パネル ---- */
 
 .panel {
@@ -519,3 +505,49 @@ html, body {
   color: #555;
   line-height: 1.6;
 }
+
+/* ---- 登録確認ポップアップ / 土地情報 ---- */
+
+.register-prompt { text-align: center; }
+.register-prompt p { margin: 4px 0 10px; font-size: 14px; }
+.register-prompt button {
+  width: 100%;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 10px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.land-info {
+  background: #f4f7f6;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 14px;
+  font-size: 13px;
+}
+.land-info-row {
+  display: flex;
+  gap: 10px;
+  padding: 3px 0;
+  line-height: 1.5;
+}
+.land-info-label {
+  flex-shrink: 0;
+  width: 58px;
+  color: #777;
+  font-size: 12px;
+  padding-top: 1px;
+}
+.land-info a { color: var(--brand); }
+
+.popup-info {
+  margin: 6px 0;
+  font-size: 12px;
+  color: #555;
+  line-height: 1.7;
+}
+
+.photo-btn-row { display: flex; gap: 8px; margin-bottom: 8px; }

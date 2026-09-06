@@ -44,7 +44,13 @@ export class MapView {
     this.onMarkerEdit = onMarkerEdit;
     this.onPopupOpen = onPopupOpen;
 
-    this.map.on('click', (e) => onMapClick(e.latlng));
+    this.lastPopupClose = 0;
+    this.map.on('popupclose', () => { this.lastPopupClose = Date.now(); });
+    this.map.on('click', (e) => {
+      // ポップアップを閉じるためのタップは登録確認を出さない
+      if (Date.now() - this.lastPopupClose < 150) return;
+      onMapClick(e.latlng);
+    });
     this.map.on('moveend', () => {
       const c = this.map.getCenter();
       saveView({ lat: c.lat, lng: c.lng, zoom: this.map.getZoom() });
@@ -77,7 +83,7 @@ export class MapView {
       const geojson = await res.json();
       const labels = L.layerGroup();
       const polygons = L.geoJSON(geojson, {
-        style: { color: def.color, weight: 2, fillColor: def.color, fillOpacity: 0.06, dashArray: '4 3' },
+        style: { color: def.color, weight: 2, fillColor: def.color, fillOpacity: 0.06, dashArray: '4 3', bubblingMouseEvents: false },
         onEachFeature: (feature, l) => {
           l.bindPopup(`${escapeHtml(feature.properties.name)}区<br><span class="popup-sub">${escapeHtml(feature.properties.address)}</span>`);
           // 校区の中心に学校名ラベル。中心置きなら形が歪な校区でもエリア外に出にくい。
@@ -164,6 +170,14 @@ export class MapView {
     const streetview = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${spot.lat},${spot.lng}`;
     const hazard = `https://disaportal.gsi.go.jp/maps/index.html?ll=${spot.lat},${spot.lng}&z=16`;
     const memo = spot.memo ? `<p class="popup-memo">${escapeHtml(spot.memo)}</p>` : '';
+    const info = spot.info || {};
+    const infoRows = [
+      info.address && `📍 ${escapeHtml(info.address)}`,
+      info.school && `🏫 ${escapeHtml(info.school)}`,
+      info.station && `🚉 ${escapeHtml(info.station)}`,
+      info.hazard && `⚠ ${escapeHtml(info.hazard)}`,
+    ].filter(Boolean);
+    const infoHtml = infoRows.length ? `<div class="popup-info">${infoRows.join('<br>')}</div>` : '';
     // 基準地点(自宅・駅など)までの直線距離。基準地点自身のポップアップには出さない。
     const refs = (this.spots || []).filter((s) => s.status === 'reference' && s.id !== spot.id);
     const dists = spot.status !== 'reference' && refs.length
@@ -177,6 +191,7 @@ export class MapView {
           <span class="popup-status" style="background:${st.color}">${st.label}</span>
           <span class="popup-stars">${stars}</span>
         </div>
+        ${infoHtml}
         ${memo}
         ${dists}
         <div class="popup-photos" data-spot-id="${spot.id}"></div>
@@ -196,6 +211,25 @@ export class MapView {
     this.map.setView([spot.lat, spot.lng], Math.max(this.map.getZoom(), 16));
     const marker = this.markers.get(spot.id);
     if (marker) marker.openPopup();
+  }
+
+  // タップ地点に「登録しますか?」の確認ポップアップを出す
+  showRegisterPrompt(latlng, onConfirm) {
+    const el = document.createElement('div');
+    el.className = 'register-prompt';
+    el.innerHTML = '<p>この場所を登録しますか?</p>';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.textContent = '登録する';
+    btn.addEventListener('click', () => {
+      this.map.closePopup();
+      onConfirm(latlng);
+    });
+    el.append(btn);
+    L.popup({ closeButton: true, autoClose: true })
+      .setLatLng(latlng)
+      .setContent(el)
+      .openOn(this.map);
   }
 
   // 検索結果へ移動。一時マーカーを置いて場所を分かりやすくする(次の検索で消える)。

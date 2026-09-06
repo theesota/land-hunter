@@ -1,6 +1,7 @@
 // UIの結線。状態(spots)を持つのはここだけで、map/store/shareを組み合わせる。
 
-import { HAZARD_LAYERS, SCHOOL_LAYERS, STATUSES, statusById, GEOCODER_URL } from './config.js';
+import { HAZARD_LAYERS, SCHOOL_LAYERS, STATUSES, statusById, GEOCODER_URL, LISTINGS_LINK } from './config.js';
+import { collectLandInfo } from './landinfo.js';
 import {
   compressImage, addPhoto, getPhotos, deletePhoto, deletePhotosForSpot, getAllPhotos, importPhotos,
 } from './photos.js';
@@ -13,17 +14,20 @@ import {
 import { MapView } from './map.js';
 
 let spots = loadSpots();
-let addMode = false;
 let pendingLatLng = null; // 新規追加時のタップ位置
+let currentLandInfo = null; // 新規登録時に自動取得した土地情報
 
 const $ = (sel) => document.querySelector(sel);
 
 const mapView = new MapView('map', {
   onMapClick: (latlng) => {
-    if (!addMode) return;
-    setAddMode(false);
-    pendingLatLng = latlng;
-    openSpotSheet(null);
+    // タップ → 確認 → 登録画面。編集シートやパネルが開いているときは誤操作防止で出さない
+    if (!$('#sheet-spot').hidden) return;
+    closePanels();
+    mapView.showRegisterPrompt(latlng, (ll) => {
+      pendingLatLng = ll;
+      openSpotSheet(null);
+    });
   },
   onMarkerEdit: (id) => {
     const spot = spots.find((s) => s.id === id);
@@ -151,15 +155,8 @@ function renderSearchResults(features) {
 // 地図を触ったら結果リストを閉じる
 $('#map').addEventListener('pointerdown', hideSearchResults);
 
-// ---- 追加モード / 現在地 ----
+// ---- 現在地 ----
 
-function setAddMode(on) {
-  addMode = on;
-  $('#btn-add').classList.toggle('active', on);
-  $('#add-hint').hidden = !on;
-}
-
-$('#btn-add').addEventListener('click', () => setAddMode(!addMode));
 $('#btn-locate').addEventListener('click', () => {
   const on = mapView.toggleLocate(showToast);
   $('#btn-locate').classList.toggle('active', on);
@@ -204,8 +201,44 @@ for (const b of $('#spot-rating').children) {
   });
 }
 
+const INFO_ROWS = [
+  ['address', '住所'],
+  ['school', '学区'],
+  ['station', '最寄り駅'],
+  ['hazard', 'ハザード'],
+];
+
+function renderLandInfo(info, loading) {
+  const box = $('#land-info');
+  const rows = INFO_ROWS.map(([key, label]) => {
+    const value = info && info[key] ? info[key] : (loading ? '取得中…' : '-');
+    return `<div class="land-info-row"><span class="land-info-label">${label}</span><span>${value}</span></div>`;
+  });
+  rows.push(`<div class="land-info-row"><span class="land-info-label">売出し</span><a href="${LISTINGS_LINK.url}" target="_blank" rel="noopener">${LISTINGS_LINK.label}</a></div>`);
+  box.innerHTML = rows.join('');
+}
+
 async function openSpotSheet(spot) {
   closePanels();
+  currentLandInfo = spot ? spot.info : null;
+  if (spot) {
+    renderLandInfo(spot.info, false);
+  } else if (pendingLatLng) {
+    renderLandInfo(null, true);
+    const target = pendingLatLng;
+    collectLandInfo(target.lat, target.lng, (partial) => {
+      // 取得中に別の地点を開いていたら反映しない
+      if (pendingLatLng === target) {
+        currentLandInfo = { ...partial };
+        renderLandInfo(currentLandInfo, true);
+      }
+    }).then((info) => {
+      if (pendingLatLng === target) {
+        currentLandInfo = { ...info };
+        renderLandInfo(currentLandInfo, false);
+      }
+    });
+  }
   $('#spot-id').value = spot ? spot.id : '';
   $('#spot-name').value = spot ? spot.name : '';
   $('#spot-memo').value = spot ? spot.memo : '';
@@ -243,18 +276,20 @@ function renderPhotoThumbs() {
   });
 }
 
-$('#input-photo').addEventListener('change', async (e) => {
-  for (const file of e.target.files) {
-    try {
-      const dataUrl = await compressImage(file);
-      formPhotos.push({ id: null, dataUrl });
-    } catch {
-      showToast('写真の読み込みに失敗しました');
+for (const input of document.querySelectorAll('.photo-input')) {
+  input.addEventListener('change', async (e) => {
+    for (const file of e.target.files) {
+      try {
+        const dataUrl = await compressImage(file);
+        formPhotos.push({ id: null, dataUrl });
+      } catch {
+        showToast('写真の読み込みに失敗しました');
+      }
     }
-  }
-  renderPhotoThumbs();
-  e.target.value = '';
-});
+    renderPhotoThumbs();
+    e.target.value = '';
+  });
+}
 
 function openPhotoViewer(dataUrl) {
   $('#photo-viewer-img').src = dataUrl;
@@ -285,7 +320,9 @@ $('#spot-form').addEventListener('submit', async (e) => {
     const cur = spots.find((s) => s.id === id);
     spots = upsertSpot(spots, { ...cur, ...fields });
   } else if (pendingLatLng) {
-    const spot = createSpot({ ...fields, lat: pendingLatLng.lat, lng: pendingLatLng.lng });
+    const spot = createSpot({
+      ...fields, lat: pendingLatLng.lat, lng: pendingLatLng.lng, info: currentLandInfo,
+    });
     spots = upsertSpot(spots, spot);
     savedId = spot.id;
   }

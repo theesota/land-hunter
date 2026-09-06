@@ -8,13 +8,17 @@ const HASH_PREFIX = '#s=';
 
 // キー名を落としてサイズを約半分にする
 function toTuple(s) {
-  return [s.id, s.lat, s.lng, s.name, s.status, s.rating, s.memo, s.createdAt, s.updatedAt, s.url || ''];
+  return [s.id, s.lat, s.lng, s.name, s.status, s.rating, s.memo, s.createdAt, s.updatedAt, s.url || '', s.info || null];
 }
 
 function fromTuple(t) {
   if (!Array.isArray(t) || t.length < 9) return null;
-  const [id, lat, lng, name, status, rating, memo, createdAt, updatedAt, url] = t;
-  const s = { id, lat, lng, name, status, rating, memo, createdAt, updatedAt, url: url || '' };
+  const [id, lat, lng, name, status, rating, memo, createdAt, updatedAt, url, info] = t;
+  const s = {
+    id, lat, lng, name, status, rating, memo, createdAt, updatedAt,
+    url: url || '',
+    info: info && typeof info === 'object' ? info : null,
+  };
   return isValidSpot(s) ? s : null;
 }
 

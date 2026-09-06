@@ -87,6 +87,12 @@ export const SCHOOL_LAYERS = [
   { id: 'junior', label: '中学校区(伊勢崎市)', file: 'data/school/isesaki_junior.geojson', color: '#0e7490' },
 ];
 
+// 周辺の売出し情報(公開APIが存在しないため、エリアの物件一覧ページへのリンクで代替)
+export const LISTINGS_LINK = {
+  label: 'SUUMOで伊勢崎市の売土地を見る',
+  url: 'https://suumo.jp/tochi/gumma/sc_isesaki/',
+};
+
 export const DEFAULT_BASEMAP = 'osm';
 
 // 地域検索(国土地理院 住所検索API)。地名・駅名・施設名・住所を引ける。キー不要。

@@ -19,6 +19,7 @@
     <symbol id="ic-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><line x1="12" y1="1" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="1" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="23" y2="12"/></symbol>
     <symbol id="ic-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
     <symbol id="ic-close" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+    <symbol id="ic-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
   </svg>
 
   <header class="topbar">
@@ -44,9 +45,7 @@
   <!-- 地図上のフローティング操作 -->
   <div class="fab-stack">
     <button id="btn-locate" class="fab" title="現在地"><svg class="icon"><use href="#ic-locate"/></svg></button>
-    <button id="btn-add" class="fab fab-primary" title="地点を追加"><svg class="icon"><use href="#ic-plus"/></svg></button>
   </div>
-  <div id="add-hint" class="add-hint" hidden>地図をタップして地点を追加</div>
 
   <!-- 共有リンクを開いたときの取り込みバナー -->
   <div id="import-banner" class="banner" hidden>
@@ -104,11 +103,11 @@
   <!-- 共有 パネル -->
   <section id="panel-share" class="panel" hidden>
     <div class="panel-head">
-      <h2>美穂さんと共有</h2>
+      <h2>共有</h2>
       <button class="icon-btn panel-close" aria-label="閉じる"><svg class="icon"><use href="#ic-close"/></svg></button>
     </div>
     <div class="panel-body">
-      <p class="note">共有リンクをLINEなどで送ると、開いた側が同じ地点を取り込めます。お互いに編集したら、その都度リンクを送り合って同期します。</p>
+      <p class="note">共有リンクをLINEなどで送ると、開いた側が同じ地点を取り込めます。編集したらその都度リンクを送り合って同期します。</p>
       <button id="btn-copy-link" class="wide-btn">共有リンクをコピー</button>
       <button id="btn-share-native" class="wide-btn">LINE等で送る…</button>
       <hr>
@@ -124,6 +123,7 @@
   <section id="sheet-spot" class="sheet" hidden>
     <form id="spot-form">
       <input type="hidden" id="spot-id">
+      <div id="land-info" class="land-info"></div>
       <div class="field">
         <label for="spot-name" class="field-label">名前</label>
         <input type="text" id="spot-name" placeholder="例: ◯◯町の南向き区画" required>
@@ -151,10 +151,16 @@
       <div class="field">
         <span class="field-label">写真</span>
         <div id="photo-thumbs" class="photo-thumbs"></div>
-        <label class="photo-add-btn">
-          <svg class="icon"><use href="#ic-plus"/></svg> 写真を追加
-          <input type="file" id="input-photo" accept="image/*" multiple hidden>
-        </label>
+        <div class="photo-btn-row">
+          <label class="photo-add-btn">
+            <svg class="icon"><use href="#ic-camera"/></svg> その場で撮影
+            <input type="file" class="photo-input" accept="image/*" capture="environment" hidden>
+          </label>
+          <label class="photo-add-btn">
+            <svg class="icon"><use href="#ic-plus"/></svg> アルバムから
+            <input type="file" class="photo-input" accept="image/*" multiple hidden>
+          </label>
+        </div>
         <p class="note">写真はこの端末に保存されます。共有リンクには含まれないので、写真ごと渡すときは共有パネルのJSON書き出しを使ってください。</p>
       </div>
       <div class="sheet-actions">

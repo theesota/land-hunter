@@ -30,7 +30,7 @@ export function isValidSpot(s) {
     && typeof s.name === 'string';
 }
 
-export function createSpot({ lat, lng, name, status, rating, memo, url }) {
+export function createSpot({ lat, lng, name, status, rating, memo, url, info }) {
   const now = Date.now();
   return {
     id: genId(),
@@ -41,6 +41,7 @@ export function createSpot({ lat, lng, name, status, rating, memo, url }) {
     rating: rating || 0,
     memo: memo || '',
     url: url || '',
+    info: info || null, // 登録時に自動取得した土地情報(住所/学区/駅/ハザード)
     createdAt: now,
     updatedAt: now,
   };
