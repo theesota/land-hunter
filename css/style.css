@@ -501,3 +501,11 @@ html, body {
 /* 出典表記が長くなるとスマホ幅でズームボタンに被るので、左下の操作類を持ち上げる */
 .leaflet-bottom.leaflet-left { bottom: 36px; }
 .leaflet-control-attribution { font-size: 10px; }
+
+/* 表示パネルのセクション区切り */
+.section-divider {
+  border-top: 1px solid #eee;
+  padding-top: 12px;
+}
+.section-divider > .field-label { font-weight: 700; color: #444; }
+.sub-field { margin-top: 8px; }

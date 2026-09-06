@@ -24,7 +24,7 @@
   <header class="topbar">
     <h1>土地ハンター</h1>
     <div class="topbar-actions">
-      <button id="btn-layers" class="bar-btn"><svg class="icon"><use href="#ic-layers"/></svg><span>ハザード</span></button>
+      <button id="btn-layers" class="bar-btn"><svg class="icon"><use href="#ic-layers"/></svg><span>表示</span></button>
       <button id="btn-list" class="bar-btn"><svg class="icon"><use href="#ic-list"/></svg><span>一覧</span></button>
       <button id="btn-share" class="bar-btn"><svg class="icon"><use href="#ic-share"/></svg><span>共有</span></button>
     </div>
@@ -58,7 +58,7 @@
   <!-- ハザードレイヤ パネル -->
   <section id="panel-layers" class="panel" hidden>
     <div class="panel-head">
-      <h2>ハザードマップ</h2>
+      <h2>表示する項目</h2>
       <button class="icon-btn panel-close" aria-label="閉じる"><svg class="icon"><use href="#ic-close"/></svg></button>
     </div>
     <div class="panel-body">
@@ -68,14 +68,17 @@
         <label><input type="radio" name="basemap" value="pale"> 淡色</label>
         <label><input type="radio" name="basemap" value="photo"> 航空写真</label>
       </div>
-      <div id="hazard-toggles"></div>
-      <div class="field">
+      <div class="field section-divider">
+        <span class="field-label">ハザードマップ</span>
+        <div id="hazard-toggles"></div>
+        <div class="sub-field">
+          <span class="field-label">ハザードの濃さ</span>
+          <input type="range" id="hazard-opacity" min="0.2" max="1" step="0.1" value="0.7">
+        </div>
+      </div>
+      <div class="field section-divider">
         <span class="field-label">学区</span>
         <div id="school-toggles"></div>
-      </div>
-      <div class="field">
-        <span class="field-label">重ねの濃さ</span>
-        <input type="range" id="hazard-opacity" min="0.2" max="1" step="0.1" value="0.7">
       </div>
       <p class="note">
         出典: <a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">ハザードマップポータルサイト</a>(国土交通省)/
