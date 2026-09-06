@@ -1,6 +1,9 @@
 // UIの結線。状態(spots)を持つのはここだけで、map/store/shareを組み合わせる。
 
-import { HAZARD_LAYERS, STATUSES, statusById, GEOCODER_URL } from './config.js';
+import { HAZARD_LAYERS, SCHOOL_LAYERS, STATUSES, statusById, GEOCODER_URL } from './config.js';
+import {
+  compressImage, addPhoto, getPhotos, deletePhoto, deletePhotosForSpot, getAllPhotos, importPhotos,
+} from './photos.js';
 import {
   loadSpots, createSpot, upsertSpot, removeSpot, mergeSpots,
 } from './store.js';
@@ -25,6 +28,19 @@ const mapView = new MapView('map', {
   onMarkerEdit: (id) => {
     const spot = spots.find((s) => s.id === id);
     if (spot) openSpotSheet(spot);
+  },
+  onPopupOpen: async (spot, popupEl) => {
+    const box = popupEl.querySelector('.popup-photos');
+    if (!box) return;
+    const photos = await getPhotos(spot.id).catch(() => []);
+    box.innerHTML = '';
+    for (const photo of photos) {
+      const img = document.createElement('img');
+      img.src = photo.dataUrl;
+      img.alt = spot.name;
+      img.addEventListener('click', () => openPhotoViewer(photo.dataUrl));
+      box.append(img);
+    }
   },
 });
 
@@ -62,6 +78,25 @@ for (const def of HAZARD_LAYERS) {
   cb.addEventListener('change', () => mapView.setHazardVisible(def.id, cb.checked));
   label.append(cb, ` ${def.label}`);
   togglesEl.append(label);
+}
+
+const schoolTogglesEl = $('#school-toggles');
+for (const def of SCHOOL_LAYERS) {
+  const label = document.createElement('label');
+  label.className = 'hazard-toggle';
+  const cb = document.createElement('input');
+  cb.type = 'checkbox';
+  cb.addEventListener('change', () => {
+    mapView.setSchoolVisible(def.id, cb.checked).catch(() => {
+      cb.checked = false;
+      showToast('学区データの読み込みに失敗しました');
+    });
+  });
+  const swatch = document.createElement('span');
+  swatch.className = 'school-swatch';
+  swatch.style.background = def.color;
+  label.append(cb, ' ', swatch, ` ${def.label}`);
+  schoolTogglesEl.append(label);
 }
 
 for (const radio of document.querySelectorAll('input[name="basemap"]')) {
@@ -134,6 +169,9 @@ $('#btn-locate').addEventListener('click', () => {
 
 let formStatus = STATUSES[0].id;
 let formRating = 0;
+// フォーム中の写真。既存分は{id, dataUrl}、追加分は{id:null, dataUrl}で保存時に確定する。
+let formPhotos = [];
+let removedPhotoIds = [];
 
 const statusRow = $('#spot-status');
 for (const st of STATUSES) {
@@ -166,24 +204,73 @@ for (const b of $('#spot-rating').children) {
   });
 }
 
-function openSpotSheet(spot) {
+async function openSpotSheet(spot) {
   closePanels();
   $('#spot-id').value = spot ? spot.id : '';
   $('#spot-name').value = spot ? spot.name : '';
   $('#spot-memo').value = spot ? spot.memo : '';
+  $('#spot-url').value = spot && spot.url ? spot.url : '';
   setFormStatus(spot ? spot.status : STATUSES[0].id);
   setFormRating(spot ? spot.rating : 0);
+  removedPhotoIds = [];
+  formPhotos = spot ? await getPhotos(spot.id).catch(() => []) : [];
+  renderPhotoThumbs();
   $('#btn-spot-delete').hidden = !spot;
   $('#sheet-spot').hidden = false;
   $('#spot-name').focus();
 }
+
+function renderPhotoThumbs() {
+  const box = $('#photo-thumbs');
+  box.innerHTML = '';
+  formPhotos.forEach((photo, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'photo-thumb';
+    const img = document.createElement('img');
+    img.src = photo.dataUrl;
+    img.addEventListener('click', () => openPhotoViewer(photo.dataUrl));
+    const del = document.createElement('button');
+    del.type = 'button';
+    del.className = 'photo-del';
+    del.textContent = '✕';
+    del.addEventListener('click', () => {
+      if (photo.id) removedPhotoIds.push(photo.id);
+      formPhotos.splice(i, 1);
+      renderPhotoThumbs();
+    });
+    wrap.append(img, del);
+    box.append(wrap);
+  });
+}
+
+$('#input-photo').addEventListener('change', async (e) => {
+  for (const file of e.target.files) {
+    try {
+      const dataUrl = await compressImage(file);
+      formPhotos.push({ id: null, dataUrl });
+    } catch {
+      showToast('写真の読み込みに失敗しました');
+    }
+  }
+  renderPhotoThumbs();
+  e.target.value = '';
+});
+
+function openPhotoViewer(dataUrl) {
+  $('#photo-viewer-img').src = dataUrl;
+  $('#photo-viewer').hidden = false;
+}
+
+$('#photo-viewer').addEventListener('click', () => {
+  $('#photo-viewer').hidden = true;
+});
 
 function closeSpotSheet() {
   $('#sheet-spot').hidden = true;
   pendingLatLng = null;
 }
 
-$('#spot-form').addEventListener('submit', (e) => {
+$('#spot-form').addEventListener('submit', async (e) => {
   e.preventDefault();
   const id = $('#spot-id').value;
   const fields = {
@@ -191,12 +278,25 @@ $('#spot-form').addEventListener('submit', (e) => {
     status: formStatus,
     rating: formRating,
     memo: $('#spot-memo').value.trim(),
+    url: $('#spot-url').value.trim(),
   };
+  let savedId = id;
   if (id) {
     const cur = spots.find((s) => s.id === id);
     spots = upsertSpot(spots, { ...cur, ...fields });
   } else if (pendingLatLng) {
-    spots = upsertSpot(spots, createSpot({ ...fields, lat: pendingLatLng.lat, lng: pendingLatLng.lng }));
+    const spot = createSpot({ ...fields, lat: pendingLatLng.lat, lng: pendingLatLng.lng });
+    spots = upsertSpot(spots, spot);
+    savedId = spot.id;
+  }
+  // 写真の追加/削除を確定
+  try {
+    for (const pid of removedPhotoIds) await deletePhoto(pid);
+    for (const photo of formPhotos) {
+      if (!photo.id && savedId) await addPhoto(savedId, photo.dataUrl);
+    }
+  } catch {
+    showToast('写真の保存に失敗しました');
   }
   closeSpotSheet();
   mapView.renderSpots(spots);
@@ -208,6 +308,7 @@ $('#btn-spot-delete').addEventListener('click', () => {
   const id = $('#spot-id').value;
   if (id && confirm('この地点を削除しますか?')) {
     spots = removeSpot(spots, id);
+    deletePhotosForSpot(id).catch(() => {});
     closeSpotSheet();
     mapView.renderSpots(spots);
     showToast('削除しました');
@@ -251,20 +352,27 @@ $('#btn-copy-link').addEventListener('click', async () => {
 $('#btn-share-native').addEventListener('click', () => {
   const url = buildShareUrl(spots);
   if (navigator.share) {
-    navigator.share({ title: '土地スカウト 共有', url }).catch(() => {});
+    navigator.share({ title: '土地ハンター 共有', url }).catch(() => {});
   } else {
     prompt('このリンクをコピーして送ってください', url);
   }
 });
 
-$('#btn-export-json').addEventListener('click', () => exportJson(spots));
+$('#btn-export-json').addEventListener('click', async () => {
+  const photos = await getAllPhotos().catch(() => []);
+  exportJson(spots, photos);
+});
 
 $('#input-import-json').addEventListener('change', async (e) => {
   const file = e.target.files[0];
   if (!file) return;
   try {
-    const incoming = await importJsonFile(file);
+    const { spots: incoming, photos } = await importJsonFile(file);
     applyImport(incoming);
+    if (photos.length) {
+      const added = await importPhotos(photos).catch(() => 0);
+      if (added) showToast(`写真${added}枚を取り込みました`);
+    }
   } catch {
     showToast('JSONの読み込みに失敗しました');
   }

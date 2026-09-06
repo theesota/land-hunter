@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <meta name="theme-color" content="#1a6b52">
-  <title>土地スカウト | 家づくり土地探しマップ</title>
+  <title>土地ハンター | 家づくり土地探しマップ</title>
   <link rel="stylesheet" href="vendor/leaflet/leaflet.min.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -22,7 +22,7 @@
   </svg>
 
   <header class="topbar">
-    <h1>土地スカウト</h1>
+    <h1>土地ハンター</h1>
     <div class="topbar-actions">
       <button id="btn-layers" class="bar-btn"><svg class="icon"><use href="#ic-layers"/></svg><span>ハザード</span></button>
       <button id="btn-list" class="bar-btn"><svg class="icon"><use href="#ic-list"/></svg><span>一覧</span></button>
@@ -70,13 +70,18 @@
       </div>
       <div id="hazard-toggles"></div>
       <div class="field">
+        <span class="field-label">学区</span>
+        <div id="school-toggles"></div>
+      </div>
+      <div class="field">
         <span class="field-label">重ねの濃さ</span>
         <input type="range" id="hazard-opacity" min="0.2" max="1" step="0.1" value="0.7">
       </div>
       <p class="note">
         出典: <a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">ハザードマップポータルサイト</a>(国土交通省)/
         <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a><br>
-        色の凡例は<a href="https://disaportal.gsi.go.jp/maps/" target="_blank" rel="noopener">重ねるハザードマップ</a>を参照。
+        色の凡例は<a href="https://disaportal.gsi.go.jp/maps/" target="_blank" rel="noopener">重ねるハザードマップ</a>を参照。<br>
+        学区: <a href="https://nlftp.mlit.go.jp/ksj/" target="_blank" rel="noopener">国土数値情報</a>(小学校区・中学校区 令和5年度)を加工。最新の指定は市の公式情報も確認を。
       </p>
     </div>
   </section>
@@ -136,6 +141,19 @@
         <label for="spot-memo" class="field-label">メモ</label>
         <textarea id="spot-memo" rows="3" placeholder="日当たり、坪数、価格、周辺環境など"></textarea>
       </div>
+      <div class="field">
+        <label for="spot-url" class="field-label">物件ページURL</label>
+        <input type="url" id="spot-url" placeholder="https://suumo.jp/... など掲載ページ" inputmode="url">
+      </div>
+      <div class="field">
+        <span class="field-label">写真</span>
+        <div id="photo-thumbs" class="photo-thumbs"></div>
+        <label class="photo-add-btn">
+          <svg class="icon"><use href="#ic-plus"/></svg> 写真を追加
+          <input type="file" id="input-photo" accept="image/*" multiple hidden>
+        </label>
+        <p class="note">写真はこの端末に保存されます。共有リンクには含まれないので、写真ごと渡すときは共有パネルのJSON書き出しを使ってください。</p>
+      </div>
       <div class="sheet-actions">
         <button type="button" id="btn-spot-delete" class="ghost danger" hidden>削除</button>
         <button type="button" id="btn-spot-cancel" class="ghost">キャンセル</button>
@@ -143,6 +161,11 @@
       </div>
     </form>
   </section>
+
+  <!-- 写真の拡大表示 -->
+  <div id="photo-viewer" class="photo-viewer" hidden>
+    <img id="photo-viewer-img" alt="写真">
+  </div>
 
   <div id="toast" class="toast" hidden></div>
 

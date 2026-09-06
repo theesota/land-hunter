@@ -78,6 +78,13 @@ export function statusById(id) {
   return STATUSES.find((s) => s.id === id) || STATUSES[0];
 }
 
+// 学区境界(国土数値情報 小学校区A27・中学校区A32 令和5年度、伊勢崎市分を抽出)
+// 出典: https://nlftp.mlit.go.jp/ksj/ 。他エリアを足すときはここに追記する。
+export const SCHOOL_LAYERS = [
+  { id: 'elementary', label: '小学校区(伊勢崎市)', file: 'data/school/isesaki_elementary.geojson', color: '#7c3aed' },
+  { id: 'junior', label: '中学校区(伊勢崎市)', file: 'data/school/isesaki_junior.geojson', color: '#0e7490' },
+];
+
 export const DEFAULT_BASEMAP = 'osm';
 
 // 地域検索(国土地理院 住所検索API)。地名・駅名・施設名・住所を引ける。キー不要。

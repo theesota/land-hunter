@@ -30,7 +30,7 @@ export function isValidSpot(s) {
     && typeof s.name === 'string';
 }
 
-export function createSpot({ lat, lng, name, status, rating, memo }) {
+export function createSpot({ lat, lng, name, status, rating, memo, url }) {
   const now = Date.now();
   return {
     id: genId(),
@@ -40,6 +40,7 @@ export function createSpot({ lat, lng, name, status, rating, memo }) {
     status: status || 'interested',
     rating: rating || 0,
     memo: memo || '',
+    url: url || '',
     createdAt: now,
     updatedAt: now,
   };

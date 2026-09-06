@@ -8,13 +8,13 @@ const HASH_PREFIX = '#s=';
 
 // キー名を落としてサイズを約半分にする
 function toTuple(s) {
-  return [s.id, s.lat, s.lng, s.name, s.status, s.rating, s.memo, s.createdAt, s.updatedAt];
+  return [s.id, s.lat, s.lng, s.name, s.status, s.rating, s.memo, s.createdAt, s.updatedAt, s.url || ''];
 }
 
 function fromTuple(t) {
   if (!Array.isArray(t) || t.length < 9) return null;
-  const [id, lat, lng, name, status, rating, memo, createdAt, updatedAt] = t;
-  const s = { id, lat, lng, name, status, rating, memo, createdAt, updatedAt };
+  const [id, lat, lng, name, status, rating, memo, createdAt, updatedAt, url] = t;
+  const s = { id, lat, lng, name, status, rating, memo, createdAt, updatedAt, url: url || '' };
   return isValidSpot(s) ? s : null;
 }
 
@@ -52,8 +52,10 @@ export function clearShareHash() {
   history.replaceState(null, '', location.pathname + location.search);
 }
 
-export function exportJson(spots) {
-  const blob = new Blob([JSON.stringify(spots, null, 2)], { type: 'application/json' });
+// 写真も含めた完全バックアップ(v2形式)。旧形式(地点配列のみ)の読み込みにも対応する。
+export function exportJson(spots, photos = []) {
+  const payload = { version: 2, spots, photos };
+  const blob = new Blob([JSON.stringify(payload)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   const date = new Date().toISOString().slice(0, 10);
@@ -63,10 +65,14 @@ export function exportJson(spots) {
   URL.revokeObjectURL(url);
 }
 
+// 戻り値: { spots, photos }
 export function importJsonFile(file) {
   return file.text().then((text) => {
     const data = JSON.parse(text);
-    if (!Array.isArray(data)) throw new Error('not an array');
-    return data.filter(isValidSpot);
+    if (Array.isArray(data)) return { spots: data.filter(isValidSpot), photos: [] };
+    if (data && Array.isArray(data.spots)) {
+      return { spots: data.spots.filter(isValidSpot), photos: Array.isArray(data.photos) ? data.photos : [] };
+    }
+    throw new Error('unknown format');
   });
 }

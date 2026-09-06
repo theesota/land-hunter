@@ -390,3 +390,98 @@ html, body {
   color: var(--brand);
   cursor: pointer;
 }
+
+/* ---- 学区 ---- */
+
+.school-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  vertical-align: -1px;
+}
+
+.popup-sub { color: #888; font-size: 11px; }
+
+/* ---- 写真 ---- */
+
+.photo-thumbs {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+.photo-thumb { position: relative; }
+.photo-thumb img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: 8px;
+  display: block;
+}
+.photo-del {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.photo-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 9px 14px;
+  border: 1.5px dashed #aaa;
+  border-radius: 10px;
+  color: #555;
+  font-size: 13px;
+  cursor: pointer;
+}
+.photo-add-btn .icon { width: 16px; height: 16px; }
+
+.photo-viewer {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  cursor: zoom-out;
+}
+.photo-viewer img {
+  max-width: 96vw;
+  max-height: 92dvh;
+  border-radius: 6px;
+}
+
+.popup-photos {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  margin: 6px 0;
+}
+.popup-photos:empty { display: none; }
+.popup-photos img {
+  width: 64px;
+  height: 64px;
+  object-fit: cover;
+  border-radius: 6px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.popup-listing {
+  display: block;
+  margin: 6px 0;
+  color: var(--brand);
+  font-weight: 600;
+}

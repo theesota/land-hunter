@@ -3,12 +3,12 @@
 
 import {
   BASE_MAPS, HAZARD_LAYERS, HAZARD_ATTRIBUTION, HAZARD_MAX_NATIVE_ZOOM,
-  DEFAULT_VIEW, DEFAULT_BASEMAP, statusById,
+  SCHOOL_LAYERS, DEFAULT_VIEW, DEFAULT_BASEMAP, statusById,
 } from './config.js';
 import { loadView, saveView, loadBasemap, saveBasemap } from './store.js';
 
 export class MapView {
-  constructor(containerId, { onMapClick, onMarkerEdit }) {
+  constructor(containerId, { onMapClick, onMarkerEdit, onPopupOpen }) {
     const view = loadView() || DEFAULT_VIEW;
     this.map = L.map(containerId, { zoomControl: false }).setView([view.lat, view.lng], view.zoom);
     L.control.zoom({ position: 'bottomleft' }).addTo(this.map);
@@ -36,8 +36,11 @@ export class MapView {
       if (def.defaultOn) this.hazardLayers[def.id].addTo(this.map);
     }
 
+    this.schoolLayers = new Map(); // id -> L.GeoJSON(初回表示時に読み込む)
+
     this.markers = new Map(); // spot.id -> L.Marker
     this.onMarkerEdit = onMarkerEdit;
+    this.onPopupOpen = onPopupOpen;
 
     this.map.on('click', (e) => onMapClick(e.latlng));
     this.map.on('moveend', () => {
@@ -59,6 +62,24 @@ export class MapView {
 
   setHazardVisible(id, visible) {
     const layer = this.hazardLayers[id];
+    if (visible) layer.addTo(this.map);
+    else this.map.removeLayer(layer);
+  }
+
+  // 学区レイヤの表示切替。GeoJSONは初回だけfetchしてキャッシュする。
+  async setSchoolVisible(id, visible) {
+    let layer = this.schoolLayers.get(id);
+    if (!layer) {
+      const def = SCHOOL_LAYERS.find((d) => d.id === id);
+      const res = await fetch(def.file);
+      const geojson = await res.json();
+      layer = L.geoJSON(geojson, {
+        style: { color: def.color, weight: 2, fillColor: def.color, fillOpacity: 0.06, dashArray: '4 3' },
+        onEachFeature: (feature, l) => l.bindPopup(`${escapeHtml(feature.properties.name)}区<br><span class="popup-sub">${escapeHtml(feature.properties.address)}</span>`),
+        attribution: '<a href="https://nlftp.mlit.go.jp/ksj/" target="_blank">国土数値情報</a>',
+      });
+      this.schoolLayers.set(id, layer);
+    }
     if (visible) layer.addTo(this.map);
     else this.map.removeLayer(layer);
   }
@@ -96,8 +117,10 @@ export class MapView {
     const marker = L.marker([spot.lat, spot.lng], { icon }).addTo(this.map);
     marker.bindPopup(this._popupHtml(spot));
     marker.on('popupopen', (e) => {
-      const btn = e.popup.getElement().querySelector('.popup-edit');
+      const el = e.popup.getElement();
+      const btn = el.querySelector('.popup-edit');
       if (btn) btn.addEventListener('click', () => this.onMarkerEdit(spot.id));
+      if (this.onPopupOpen) this.onPopupOpen(spot, el);
     });
     this.markers.set(spot.id, marker);
   }
@@ -106,8 +129,12 @@ export class MapView {
     const st = statusById(spot.status);
     const stars = spot.rating ? '★'.repeat(spot.rating) : '';
     const gmap = `https://www.google.com/maps?q=${spot.lat},${spot.lng}`;
+    // Google公式のMaps URLs形式。その地点のストリートビューを直接開く。
+    const streetview = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${spot.lat},${spot.lng}`;
     const hazard = `https://disaportal.gsi.go.jp/maps/index.html?ll=${spot.lat},${spot.lng}&z=16`;
     const memo = spot.memo ? `<p class="popup-memo">${escapeHtml(spot.memo)}</p>` : '';
+    const listing = spot.url
+      ? `<a href="${escapeHtml(spot.url)}" target="_blank" rel="noopener" class="popup-listing">物件ページを開く</a>` : '';
     return `
       <div class="popup">
         <strong>${escapeHtml(spot.name)}</strong>
@@ -116,8 +143,13 @@ export class MapView {
           <span class="popup-stars">${stars}</span>
         </div>
         ${memo}
+        <div class="popup-photos" data-spot-id="${spot.id}"></div>
+        ${listing}
         <div class="popup-links">
+          <a href="${streetview}" target="_blank" rel="noopener">ストリートビュー</a>
           <a href="${gmap}" target="_blank" rel="noopener">Googleマップ</a>
+        </div>
+        <div class="popup-links">
           <a href="${hazard}" target="_blank" rel="noopener">重ねるハザードマップ</a>
         </div>
         <button type="button" class="popup-edit">編集</button>
