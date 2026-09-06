@@ -6,6 +6,9 @@ import {
   SCHOOL_LAYERS, DEFAULT_VIEW, DEFAULT_BASEMAP, statusById,
 } from './config.js';
 import { loadView, saveView, loadBasemap, saveBasemap } from './store.js';
+import { hazardHtml } from './landinfo.js';
+
+const ROAD_LABELS = { north: '北', east: '東', south: '南', west: '西' };
 
 export class MapView {
   constructor(containerId, { onMapClick, onMarkerEdit, onPopupOpen }) {
@@ -24,7 +27,7 @@ export class MapView {
     this.currentBasemap = BASE_MAPS[loadBasemap()] ? loadBasemap() : DEFAULT_BASEMAP;
     this.baseLayers[this.currentBasemap].addTo(this.map);
 
-    this.hazardOpacity = 0.7;
+    this.hazardOpacity = 0.75; // 固定(UIでの調整は廃止)
     this.hazardLayers = {};
     for (const def of HAZARD_LAYERS) {
       this.hazardLayers[def.id] = L.tileLayer(def.url, {
@@ -115,11 +118,6 @@ export class MapView {
     }
   }
 
-  setHazardOpacity(opacity) {
-    this.hazardOpacity = opacity;
-    for (const layer of Object.values(this.hazardLayers)) layer.setOpacity(opacity);
-  }
-
   // ---- 地点マーカー ----
 
   renderSpots(spots) {
@@ -171,11 +169,13 @@ export class MapView {
     const hazard = `https://disaportal.gsi.go.jp/maps/index.html?ll=${spot.lat},${spot.lng}&z=16`;
     const memo = spot.memo ? `<p class="popup-memo">${escapeHtml(spot.memo)}</p>` : '';
     const info = spot.info || {};
+    const roads = (spot.roads || []).map((d) => ROAD_LABELS[d]).filter(Boolean);
     const infoRows = [
       info.address && `📍 ${escapeHtml(info.address)}`,
       info.school && `🏫 ${escapeHtml(info.school)}`,
       info.station && `🚉 ${escapeHtml(info.station)}`,
-      info.hazard && `⚠ ${escapeHtml(info.hazard)}`,
+      roads.length && `🛣 接道: ${roads.join('・')}側`,
+      (info.hz || info.hazard) && `<span class="popup-hz">${hazardHtml(info)}</span>`,
     ].filter(Boolean);
     const infoHtml = infoRows.length ? `<div class="popup-info">${infoRows.join('<br>')}</div>` : '';
     // 基準地点(自宅・駅など)までの直線距離。基準地点自身のポップアップには出さない。

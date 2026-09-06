@@ -1,7 +1,7 @@
 // UIの結線。状態(spots)を持つのはここだけで、map/store/shareを組み合わせる。
 
 import { HAZARD_LAYERS, SCHOOL_LAYERS, STATUSES, statusById, GEOCODER_URL, LISTINGS_LINK } from './config.js';
-import { collectLandInfo } from './landinfo.js';
+import { collectLandInfo, hazardHtml, DEPTH_COLORS } from './landinfo.js';
 import {
   compressImage, addPhoto, getPhotos, deletePhoto, deletePhotosForSpot, getAllPhotos, importPhotos,
 } from './photos.js';
@@ -107,7 +107,13 @@ for (const radio of document.querySelectorAll('input[name="basemap"]')) {
   radio.checked = radio.value === mapView.currentBasemap;
   radio.addEventListener('change', () => mapView.setBaseMap(radio.value));
 }
-$('#hazard-opacity').addEventListener('input', (e) => mapView.setHazardOpacity(+e.target.value));
+// 凡例(浸水深の色はlandinfo.jsの判定テーブルと同じものを表示)
+{
+  const rows = DEPTH_COLORS.map(({ rgb, label, note }) =>
+    `<div class="legend-row"><i class="hz-swatch" style="background:rgb(${rgb})"></i><b>${label}</b><span>${note}</span></div>`);
+  rows.push('<div class="legend-row legend-note">土砂災害: <i class="hz-swatch" style="background:#c1272d"></i>赤系=特別警戒区域(建築規制あり) / <i class="hz-swatch" style="background:#f5dc32"></i>黄系=警戒区域</div>');
+  $('#hazard-legend').innerHTML = rows.join('');
+}
 
 // ---- 地域検索 ----
 
@@ -169,6 +175,22 @@ let formRating = 0;
 // フォーム中の写真。既存分は{id, dataUrl}、追加分は{id:null, dataUrl}で保存時に確定する。
 let formPhotos = [];
 let removedPhotoIds = [];
+let formRoads = []; // 接道方角(north/east/south/west)
+
+for (const btn of document.querySelectorAll('.road-chip')) {
+  btn.addEventListener('click', () => {
+    const dir = btn.dataset.road;
+    formRoads = formRoads.includes(dir) ? formRoads.filter((d) => d !== dir) : [...formRoads, dir];
+    btn.classList.toggle('active', formRoads.includes(dir));
+  });
+}
+
+function setFormRoads(roads) {
+  formRoads = [...(roads || [])];
+  for (const btn of document.querySelectorAll('.road-chip')) {
+    btn.classList.toggle('active', formRoads.includes(btn.dataset.road));
+  }
+}
 
 const statusRow = $('#spot-status');
 for (const st of STATUSES) {
@@ -211,7 +233,12 @@ const INFO_ROWS = [
 function renderLandInfo(info, loading) {
   const box = $('#land-info');
   const rows = INFO_ROWS.map(([key, label]) => {
-    const value = info && info[key] ? info[key] : (loading ? '取得中…' : '-');
+    let value;
+    if (key === 'hazard' && info && (info.hz || info.hazard)) {
+      value = hazardHtml(info);
+    } else {
+      value = info && info[key] ? info[key] : (loading ? '取得中…' : '-');
+    }
     return `<div class="land-info-row"><span class="land-info-label">${label}</span><span>${value}</span></div>`;
   });
   rows.push(`<div class="land-info-row"><span class="land-info-label">売出し</span><a href="${LISTINGS_LINK.url}" target="_blank" rel="noopener">${LISTINGS_LINK.label}</a></div>`);
@@ -245,6 +272,7 @@ async function openSpotSheet(spot) {
   $('#spot-url').value = spot && spot.url ? spot.url : '';
   setFormStatus(spot ? spot.status : STATUSES[0].id);
   setFormRating(spot ? spot.rating : 0);
+  setFormRoads(spot ? spot.roads : []);
   removedPhotoIds = [];
   formPhotos = spot ? await getPhotos(spot.id).catch(() => []) : [];
   renderPhotoThumbs();
@@ -314,6 +342,7 @@ $('#spot-form').addEventListener('submit', async (e) => {
     rating: formRating,
     memo: $('#spot-memo').value.trim(),
     url: $('#spot-url').value.trim(),
+    roads: formRoads,
   };
   let savedId = id;
   if (id) {

@@ -7,14 +7,23 @@ import { HAZARD_LAYERS, SCHOOL_LAYERS } from './config.js';
 
 // 洪水・津波・高潮の浸水深と色の対応。
 // 出典: 重ねるハザードマップ公式凡例(shinsui_legend3.png)から抽出し、実タイルの色と一致を確認済み。
-const DEPTH_COLORS = [
-  { rgb: [220, 122, 220], label: '20m以上' },
-  { rgb: [242, 133, 201], label: '10〜20m' },
-  { rgb: [255, 145, 145], label: '5〜10m' },
-  { rgb: [255, 183, 183], label: '3〜5m' },
-  { rgb: [255, 216, 192], label: '0.5〜3m' },
-  { rgb: [247, 245, 169], label: '0.5m未満' },
+// noteは生活実感の目安(凡例パンフレットの一般的説明に基づく)。
+export const DEPTH_COLORS = [
+  { rgb: [220, 122, 220], label: '20m以上', note: '2階以上が水没する目安' },
+  { rgb: [242, 133, 201], label: '10〜20m', note: '2階以上が水没する目安' },
+  { rgb: [255, 145, 145], label: '5〜10m', note: '2階以上が水没する目安' },
+  { rgb: [255, 183, 183], label: '3〜5m', note: '2階まで浸水する目安' },
+  { rgb: [255, 216, 192], label: '0.5〜3m', note: '1階が浸水する目安' },
+  { rgb: [247, 245, 169], label: '0.5m未満', note: '床下浸水の目安' },
 ];
+
+// 土砂災害警戒区域の色(種類ごとに公式凡例+実タイルで確認済み)
+// 赤系=特別警戒区域(レッドゾーン: 建築規制あり)、黄系=警戒区域(イエローゾーン)
+const DOSHA_COLORS = {
+  dosekiryu: { special: [165, 0, 33], warning: [230, 200, 50] },
+  kyukeisha: { special: [250, 40, 0], warning: [250, 230, 0] },
+  jisuberi: { special: [180, 0, 40], warning: [255, 153, 0] },
+};
 
 // 徒歩分数の換算: 不動産表示規約と同じ80m=1分(直線距離ベースの目安)
 const WALK_METERS_PER_MIN = 80;
@@ -70,15 +79,27 @@ function inFeature(lat, lng, geometry) {
 }
 
 export async function schoolsAt(lat, lng) {
-  const names = [];
+  const results = [];
+  let points = [];
+  try {
+    points = await getJson('data/school/isesaki_school_points.json');
+  } catch { /* 位置データがなければ校名のみ */ }
   for (const def of SCHOOL_LAYERS) {
     try {
       const gj = await getJson(def.file);
       const hit = gj.features.find((f) => inFeature(lat, lng, f.geometry));
-      if (hit) names.push(hit.properties.name);
+      if (!hit) continue;
+      const name = hit.properties.name;
+      const pt = points.find((sp) => sp.n === name);
+      if (pt) {
+        const walkMin = Math.ceil(distanceMeters(lat, lng, pt.lat, pt.lng) / WALK_METERS_PER_MIN);
+        results.push(`${name}(徒歩約${walkMin}分)`);
+      } else {
+        results.push(name);
+      }
     } catch { /* データ未整備エリアは黙ってスキップ */ }
   }
-  return names;
+  return results;
 }
 
 // ---- ハザード(タイルの色を読む) ----
@@ -102,17 +123,30 @@ async function samplePixel(urlTemplate, lat, lng, z = 16) {
   return ctx.getImageData(0, 0, 1, 1).data; // [r,g,b,a]
 }
 
-function depthLabel(px) {
-  for (const { rgb, label } of DEPTH_COLORS) {
-    if (Math.abs(px[0] - rgb[0]) < 30 && Math.abs(px[1] - rgb[1]) < 30 && Math.abs(px[2] - rgb[2]) < 30) {
-      return label;
-    }
-  }
-  return '想定あり(深さ不明)';
+function toHex(px) {
+  return `#${[px[0], px[1], px[2]].map((v) => v.toString(16).padStart(2, '0')).join('')}`;
 }
 
-// 戻り値: 該当ハザードの文字列配列。全レイヤの取得に失敗したら判定不可としてnull。
-// (通信エラーを「該当なし」と誤表示しないための区別)
+function nearColor(px, rgb, tol = 30) {
+  return Math.abs(px[0] - rgb[0]) < tol && Math.abs(px[1] - rgb[1]) < tol && Math.abs(px[2] - rgb[2]) < tol;
+}
+
+function depthEntry(px) {
+  for (const { rgb, label, note } of DEPTH_COLORS) {
+    if (nearColor(px, rgb)) return { label, note };
+  }
+  return { label: '想定あり(深さ不明)', note: null };
+}
+
+function doshaLevel(px, layerId) {
+  const colors = DOSHA_COLORS[layerId];
+  if (colors && nearColor(px, colors.special)) return '特別警戒区域(赤)';
+  if (colors && nearColor(px, colors.warning)) return '警戒区域(黄)';
+  return '該当';
+}
+
+// 戻り値: 該当ハザードの配列 [{t: 表示文, c: 地図上の色, n: 目安}]。
+// 全レイヤの取得に失敗したら判定不可としてnull(通信エラーを「該当なし」と誤表示しない)。
 export async function hazardsAt(lat, lng) {
   const depthLayerIds = new Set(['flood', 'tsunami', 'takashio']);
   let failed = 0;
@@ -121,7 +155,12 @@ export async function hazardsAt(lat, lng) {
       const px = await samplePixel(def.url, lat, lng);
       if (!px || px[3] === 0) return null;
       const short = def.label.replace(/\(.*\)/, '');
-      return depthLayerIds.has(def.id) ? `${short}: ${depthLabel(px)}` : `${short}: 該当`;
+      const c = toHex(px);
+      if (depthLayerIds.has(def.id)) {
+        const { label, note } = depthEntry(px);
+        return { t: `${short}: ${label}`, c, n: note };
+      }
+      return { t: `${short}: ${doshaLevel(px, def.id)}`, c, n: null };
     } catch {
       failed++;
       return null;
@@ -167,11 +206,35 @@ export function collectLandInfo(lat, lng, onUpdate) {
     addressAt(lat, lng).then((v) => { if (v) info.address = v; }),
     schoolsAt(lat, lng).then((v) => { if (v.length) info.school = v.join(' / '); }),
     hazardsAt(lat, lng).then((v) => {
-      if (v !== null) info.hazard = v.length ? v.join('、') : '主要ハザード該当なし';
+      if (v !== null) {
+        info.hz = v;
+        info.hazard = v.length ? v.map((h) => h.t).join('、') : '主要ハザード該当なし';
+      }
     }),
     nearestStationAt(lat, lng).then((v) => {
       if (v) info.station = `${v.name}駅(${v.line}) 徒歩約${v.walkMin}分`;
     }),
   ].map((p) => p.catch(() => {}).then(() => onUpdate && onUpdate(info)));
   return Promise.all(tasks).then(() => info);
+}
+
+// ハザード表示用HTML。地図と同じ色のチップ+生活実感の目安を添える。
+export function hazardHtml(info) {
+  if (!info) return '-';
+  if (Array.isArray(info.hz) && info.hz.length) {
+    return info.hz.map((h) => {
+      const note = h.n ? `<small class="hz-note">${escapeText(h.n)}</small>` : '';
+      return `<span class="hz-item"><i class="hz-swatch" style="background:${escapeText(h.c)}"></i>${escapeText(h.t)}${note}</span>`;
+    }).join('');
+  }
+  if (info.hazard === '主要ハザード該当なし') {
+    return '<span class="hz-item hz-safe">✓ 主要ハザード該当なし</span>';
+  }
+  return info.hazard ? escapeText(info.hazard) : '-';
+}
+
+function escapeText(str) {
+  return String(str).replace(/[&<>"']/g, (ch) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[ch]));
 }

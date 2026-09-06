@@ -42,6 +42,15 @@
 
   <main id="map"></main>
 
+  <!-- 方角表示(この地図は常に上が北) -->
+  <div class="compass" title="上が北です">
+    <svg viewBox="0 0 40 40" aria-hidden="true">
+      <circle cx="20" cy="20" r="18" fill="#fff" stroke="#ccc"/>
+      <path d="M20 6 L25 24 L20 20 L15 24 Z" fill="#c93b3b"/>
+      <text x="20" y="34" text-anchor="middle" font-size="9" fill="#555">N</text>
+    </svg>
+  </div>
+
   <!-- 地図上のフローティング操作 -->
   <div class="fab-stack">
     <button id="btn-locate" class="fab" title="現在地"><svg class="icon"><use href="#ic-locate"/></svg></button>
@@ -70,10 +79,10 @@
       <div class="field section-divider">
         <span class="field-label">ハザードマップ</span>
         <div id="hazard-toggles"></div>
-        <div class="sub-field">
-          <span class="field-label">ハザードの濃さ</span>
-          <input type="range" id="hazard-opacity" min="0.2" max="1" step="0.1" value="0.7">
-        </div>
+        <details class="legend-box">
+          <summary>色の見方(凡例)</summary>
+          <div id="hazard-legend"></div>
+        </details>
       </div>
       <div class="field section-divider">
         <span class="field-label">学区</span>
@@ -143,6 +152,15 @@
       <div class="field">
         <label for="spot-memo" class="field-label">メモ</label>
         <textarea id="spot-memo" rows="3" placeholder="日当たり、坪数、価格、周辺環境など"></textarea>
+      </div>
+      <div class="field">
+        <span class="field-label">接道方角(道路がどちら側にあるか・複数可)</span>
+        <div id="spot-roads" class="chip-row">
+          <button type="button" class="chip road-chip" data-road="north">北</button>
+          <button type="button" class="chip road-chip" data-road="east">東</button>
+          <button type="button" class="chip road-chip" data-road="south">南</button>
+          <button type="button" class="chip road-chip" data-road="west">西</button>
+        </div>
       </div>
       <div class="field">
         <label for="spot-url" class="field-label">物件ページURL</label>

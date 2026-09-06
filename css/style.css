@@ -551,3 +551,48 @@ html, body {
 }
 
 .photo-btn-row { display: flex; gap: 8px; margin-bottom: 8px; }
+
+/* ---- コンパス ---- */
+
+.compass {
+  position: fixed;
+  top: 122px;
+  right: 12px;
+  width: 40px;
+  height: 40px;
+  z-index: 900;
+  filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
+}
+
+/* ---- ハザードチップ / 凡例 ---- */
+
+.hz-swatch {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  vertical-align: -1px;
+  margin-right: 4px;
+  flex-shrink: 0;
+}
+
+.hz-item { display: block; padding: 1px 0; }
+.hz-item .hz-note { display: block; margin-left: 17px; color: #888; font-size: 11px; }
+.hz-safe { color: #1a9e50; font-weight: 600; }
+
+.legend-box { margin-top: 10px; font-size: 12px; }
+.legend-box summary { color: var(--brand); cursor: pointer; padding: 4px 0; }
+.legend-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 0;
+}
+.legend-row b { min-width: 62px; font-weight: 600; }
+.legend-row span { color: #777; }
+.legend-note { display: block; line-height: 1.8; color: #555; }
+
+.road-chip { --chip-color: #555; }
+
+.popup-hz { display: block; margin-top: 2px; }
