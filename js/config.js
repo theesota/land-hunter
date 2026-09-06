@@ -1,0 +1,77 @@
+// アプリ全体で使う定義。レイヤやステータスを増やすときはこのファイルだけ直せばいい。
+
+// ベース地図(地理院タイル)
+export const BASE_MAPS = {
+  pale: {
+    url: 'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
+    attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
+    maxZoom: 18,
+  },
+  photo: {
+    url: 'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',
+    attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
+    maxZoom: 18,
+  },
+};
+
+// 重ねるハザードマップ配信タイル
+// 出典: https://disaportal.gsi.go.jp/hazardmap/copyright/opendata.html (配信ズーム2〜17)
+export const HAZARD_LAYERS = [
+  {
+    id: 'flood',
+    label: '洪水浸水想定(想定最大規模)',
+    url: 'https://disaportaldata.gsi.go.jp/raster/01_flood_l2_shinsuishin_data/{z}/{x}/{y}.png',
+    defaultOn: true,
+  },
+  {
+    id: 'dosekiryu',
+    label: '土砂災害警戒区域(土石流)',
+    url: 'https://disaportaldata.gsi.go.jp/raster/05_dosekiryukeikaikuiki/{z}/{x}/{y}.png',
+    defaultOn: true,
+  },
+  {
+    id: 'kyukeisha',
+    label: '土砂災害警戒区域(急傾斜地)',
+    url: 'https://disaportaldata.gsi.go.jp/raster/05_kyukeishakeikaikuiki/{z}/{x}/{y}.png',
+    defaultOn: true,
+  },
+  {
+    id: 'jisuberi',
+    label: '土砂災害警戒区域(地すべり)',
+    url: 'https://disaportaldata.gsi.go.jp/raster/05_jisuberikeikaikuiki/{z}/{x}/{y}.png',
+    defaultOn: false,
+  },
+  {
+    id: 'tsunami',
+    label: '津波浸水想定',
+    url: 'https://disaportaldata.gsi.go.jp/raster/04_tsunami_newlegend_data/{z}/{x}/{y}.png',
+    defaultOn: false,
+  },
+  {
+    id: 'takashio',
+    label: '高潮浸水想定',
+    url: 'https://disaportaldata.gsi.go.jp/raster/03_hightide_l2_shinsuishin_data/{z}/{x}/{y}.png',
+    defaultOn: false,
+  },
+];
+
+export const HAZARD_ATTRIBUTION =
+  '<a href="https://disaportal.gsi.go.jp/" target="_blank">ハザードマップポータルサイト</a>';
+
+// ハザードタイルの配信範囲はズーム17まで。18以上は17のタイルを拡大表示する。
+export const HAZARD_MAX_NATIVE_ZOOM = 17;
+
+// 地点のステータス。順序はUIの表示順。
+export const STATUSES = [
+  { id: 'interested', label: '気になる', color: '#2b6fd6' },
+  { id: 'visited', label: '見学済み', color: '#e08a00' },
+  { id: 'candidate', label: '候補', color: '#1a9e50' },
+  { id: 'rejected', label: '見送り', color: '#8a8a8a' },
+];
+
+export function statusById(id) {
+  return STATUSES.find((s) => s.id === id) || STATUSES[0];
+}
+
+// 初期表示(地点も保存ビューもないとき): 日本全体
+export const DEFAULT_VIEW = { lat: 36.2, lng: 138.25, zoom: 5 };

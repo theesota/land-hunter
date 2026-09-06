@@ -1,0 +1,311 @@
+/* モバイルファースト。地図を全画面にして、UIは上バー+フローティングボタン+パネルで重ねる */
+
+:root {
+  --brand: #1a6b52;
+  --brand-dark: #12503d;
+  --danger: #c93b3b;
+  --ink: #222;
+  --panel-bg: #fff;
+  --shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
+}
+
+* { box-sizing: border-box; }
+
+/* .panelなどのdisplay指定がhidden属性(UAのdisplay:none)に勝ってしまうのを防ぐ */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  color: var(--ink);
+}
+
+#map {
+  position: fixed;
+  inset: 52px 0 0 0;
+  z-index: 0;
+}
+
+/* ---- 上バー ---- */
+
+.topbar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  background: var(--brand);
+  color: #fff;
+  z-index: 1000;
+}
+
+.topbar h1 { font-size: 17px; margin: 0; font-weight: 600; }
+.topbar-actions { display: flex; gap: 6px; }
+
+.icon-btn {
+  border: none;
+  background: transparent;
+  font-size: 20px;
+  padding: 6px 8px;
+  cursor: pointer;
+  color: inherit;
+  border-radius: 8px;
+}
+.topbar .icon-btn:active { background: var(--brand-dark); }
+
+/* ---- フローティングボタン ---- */
+
+.fab-stack {
+  position: fixed;
+  right: 14px;
+  bottom: 26px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 900;
+}
+
+.fab {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: none;
+  background: #fff;
+  font-size: 24px;
+  box-shadow: var(--shadow);
+  cursor: pointer;
+}
+
+.fab-primary { background: var(--brand); color: #fff; font-size: 30px; line-height: 1; }
+.fab.active { outline: 3px solid #ffb43a; }
+
+.add-hint {
+  position: fixed;
+  bottom: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.75);
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  z-index: 900;
+  white-space: nowrap;
+}
+
+/* ---- パネル ---- */
+
+.panel {
+  position: fixed;
+  top: 52px; right: 0;
+  width: min(340px, 100vw);
+  max-height: calc(100dvh - 52px);
+  background: var(--panel-bg);
+  box-shadow: var(--shadow);
+  z-index: 1100;
+  display: flex;
+  flex-direction: column;
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  border-bottom: 1px solid #e5e5e5;
+}
+.panel-head h2 { font-size: 15px; margin: 0; }
+.panel-head .icon-btn { color: #666; }
+
+.panel-body { padding: 14px; overflow-y: auto; }
+
+.field { margin-bottom: 14px; }
+.field-label { display: block; font-size: 12px; color: #666; margin-bottom: 6px; }
+.field label { margin-right: 12px; font-size: 14px; }
+
+.hazard-toggle {
+  display: block;
+  padding: 7px 2px;
+  font-size: 14px;
+}
+
+.note { font-size: 12px; color: #777; line-height: 1.7; }
+.note a { color: var(--brand); }
+
+/* ---- 地点一覧 ---- */
+
+.spot-list { list-style: none; margin: 0; padding: 0; }
+.spot-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 11px 4px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+}
+.spot-list .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+.spot-list .spot-name { flex: 1; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spot-list .spot-sub { font-size: 12px; color: #888; flex-shrink: 0; }
+
+/* ---- 共有パネル ---- */
+
+.wide-btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin-bottom: 10px;
+  border: none;
+  border-radius: 10px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 14px;
+  cursor: pointer;
+  text-align: center;
+}
+.wide-btn.ghost { background: #f0f0f0; color: var(--ink); }
+.file-label { cursor: pointer; }
+
+/* ---- ボトムシート(地点フォーム) ---- */
+
+.sheet {
+  position: fixed;
+  left: 0; right: 0; bottom: 0;
+  background: #fff;
+  border-radius: 16px 16px 0 0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.25);
+  padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+  z-index: 1200;
+  max-height: 80dvh;
+  overflow-y: auto;
+}
+
+.sheet input[type="text"], .sheet textarea {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px; /* iOSのズーム防止 */
+  font-family: inherit;
+}
+
+.chip-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.chip {
+  padding: 7px 14px;
+  border-radius: 16px;
+  border: 1.5px solid var(--chip-color);
+  background: #fff;
+  color: var(--chip-color);
+  font-size: 13px;
+  cursor: pointer;
+}
+.chip.active { background: var(--chip-color); color: #fff; }
+
+.star-row button {
+  font-size: 28px;
+  border: none;
+  background: none;
+  color: #ccc;
+  cursor: pointer;
+  padding: 0 4px;
+}
+.star-row button.active { color: #ffb43a; }
+
+.sheet-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
+.sheet-actions button {
+  padding: 10px 18px;
+  border-radius: 10px;
+  border: none;
+  font-size: 14px;
+  cursor: pointer;
+}
+.sheet-actions .primary { background: var(--brand); color: #fff; }
+.sheet-actions .ghost { background: #f0f0f0; }
+.sheet-actions .danger { color: var(--danger); margin-right: auto; }
+
+/* ---- バナー / トースト ---- */
+
+.banner {
+  position: fixed;
+  top: 60px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(94vw, 420px);
+  background: #fff8e6;
+  border: 1px solid #e8c96a;
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  z-index: 1300;
+  box-shadow: var(--shadow);
+}
+.banner span { flex: 1; }
+.banner button {
+  border: none;
+  border-radius: 8px;
+  padding: 8px 12px;
+  background: var(--brand);
+  color: #fff;
+  font-size: 13px;
+  cursor: pointer;
+}
+.banner button.ghost { background: #eee; color: var(--ink); }
+
+.toast {
+  position: fixed;
+  bottom: 100px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+  padding: 10px 18px;
+  border-radius: 22px;
+  font-size: 13px;
+  z-index: 1400;
+  white-space: nowrap;
+}
+
+/* ---- マーカーとポップアップ ---- */
+
+.spot-pin {
+  width: 22px;
+  height: 22px;
+  background: var(--pin-color);
+  border: 2.5px solid #fff;
+  border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  box-shadow: 1px 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.popup { min-width: 180px; font-size: 13px; }
+.popup strong { font-size: 14px; }
+.popup-meta { display: flex; align-items: center; gap: 6px; margin: 6px 0; }
+.popup-status {
+  color: #fff;
+  border-radius: 10px;
+  padding: 2px 8px;
+  font-size: 11px;
+}
+.popup-stars { color: #ffb43a; }
+.popup-memo { margin: 6px 0; white-space: pre-wrap; color: #444; }
+.popup-links { display: flex; gap: 12px; margin: 8px 0; }
+.popup-links a { color: var(--brand); font-weight: 600; }
+.popup-edit {
+  width: 100%;
+  padding: 7px;
+  border: 1px solid var(--brand);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--brand);
+  cursor: pointer;
+}

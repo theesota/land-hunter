@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="theme-color" content="#1a6b52">
+  <title>土地スカウト | 家づくり土地探しマップ</title>
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.min.css">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+  <header class="topbar">
+    <h1>土地スカウト</h1>
+    <div class="topbar-actions">
+      <button id="btn-layers" class="icon-btn" title="ハザードレイヤ">🗺</button>
+      <button id="btn-list" class="icon-btn" title="地点一覧">📋</button>
+      <button id="btn-share" class="icon-btn" title="共有">🔗</button>
+    </div>
+  </header>
+
+  <main id="map"></main>
+
+  <!-- 地図上のフローティング操作 -->
+  <div class="fab-stack">
+    <button id="btn-locate" class="fab" title="現在地">📍</button>
+    <button id="btn-add" class="fab fab-primary" title="地点を追加">＋</button>
+  </div>
+  <div id="add-hint" class="add-hint" hidden>地図をタップして地点を追加</div>
+
+  <!-- 共有リンクを開いたときの取り込みバナー -->
+  <div id="import-banner" class="banner" hidden>
+    <span id="import-banner-text"></span>
+    <button id="btn-import-yes">取り込む</button>
+    <button id="btn-import-no" class="ghost">閉じる</button>
+  </div>
+
+  <!-- ハザードレイヤ パネル -->
+  <section id="panel-layers" class="panel" hidden>
+    <div class="panel-head">
+      <h2>ハザードマップ</h2>
+      <button class="icon-btn panel-close">✕</button>
+    </div>
+    <div class="panel-body">
+      <div class="field">
+        <span class="field-label">ベース地図</span>
+        <label><input type="radio" name="basemap" value="pale" checked> 標準</label>
+        <label><input type="radio" name="basemap" value="photo"> 航空写真</label>
+      </div>
+      <div id="hazard-toggles"></div>
+      <div class="field">
+        <span class="field-label">重ねの濃さ</span>
+        <input type="range" id="hazard-opacity" min="0.2" max="1" step="0.1" value="0.7">
+      </div>
+      <p class="note">
+        出典: <a href="https://disaportal.gsi.go.jp/" target="_blank" rel="noopener">ハザードマップポータルサイト</a>(国土交通省)/
+        <a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank" rel="noopener">地理院タイル</a><br>
+        色の凡例は<a href="https://disaportal.gsi.go.jp/maps/" target="_blank" rel="noopener">重ねるハザードマップ</a>を参照。
+      </p>
+    </div>
+  </section>
+
+  <!-- 地点一覧 パネル -->
+  <section id="panel-list" class="panel" hidden>
+    <div class="panel-head">
+      <h2>保存した地点</h2>
+      <button class="icon-btn panel-close">✕</button>
+    </div>
+    <div class="panel-body">
+      <ul id="spot-list" class="spot-list"></ul>
+      <p id="spot-empty" class="note">まだ地点がありません。「＋」で地図に追加できます。</p>
+    </div>
+  </section>
+
+  <!-- 共有 パネル -->
+  <section id="panel-share" class="panel" hidden>
+    <div class="panel-head">
+      <h2>美穂さんと共有</h2>
+      <button class="icon-btn panel-close">✕</button>
+    </div>
+    <div class="panel-body">
+      <p class="note">共有リンクをLINEなどで送ると、開いた側が同じ地点を取り込めます。お互いに編集したら、その都度リンクを送り合って同期します。</p>
+      <button id="btn-copy-link" class="wide-btn">共有リンクをコピー</button>
+      <button id="btn-share-native" class="wide-btn">LINE等で送る…</button>
+      <hr>
+      <p class="note">バックアップ / まとめて移行:</p>
+      <button id="btn-export-json" class="wide-btn ghost">JSONファイルに書き出す</button>
+      <label class="wide-btn ghost file-label">JSONファイルを読み込む
+        <input type="file" id="input-import-json" accept=".json,application/json" hidden>
+      </label>
+    </div>
+  </section>
+
+  <!-- 地点編集フォーム(ボトムシート) -->
+  <section id="sheet-spot" class="sheet" hidden>
+    <form id="spot-form">
+      <input type="hidden" id="spot-id">
+      <div class="field">
+        <label for="spot-name" class="field-label">名前</label>
+        <input type="text" id="spot-name" placeholder="例: ◯◯町の南向き区画" required>
+      </div>
+      <div class="field">
+        <span class="field-label">ステータス</span>
+        <div id="spot-status" class="chip-row"></div>
+      </div>
+      <div class="field">
+        <span class="field-label">評価</span>
+        <div id="spot-rating" class="star-row">
+          <button type="button" data-star="1">★</button>
+          <button type="button" data-star="2">★</button>
+          <button type="button" data-star="3">★</button>
+        </div>
+      </div>
+      <div class="field">
+        <label for="spot-memo" class="field-label">メモ</label>
+        <textarea id="spot-memo" rows="3" placeholder="日当たり、坪数、価格、周辺環境など"></textarea>
+      </div>
+      <div class="sheet-actions">
+        <button type="button" id="btn-spot-delete" class="ghost danger" hidden>削除</button>
+        <button type="button" id="btn-spot-cancel" class="ghost">キャンセル</button>
+        <button type="submit" class="primary">保存</button>
+      </div>
+    </form>
+  </section>
+
+  <div id="toast" class="toast" hidden></div>
+
+  <script src="vendor/leaflet/leaflet.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
