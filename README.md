@@ -4,6 +4,7 @@
 
 ## できること
 
+- **地域検索**: 地名・駅名・住所で検索して地図を移動([国土地理院 住所検索API](https://msearch.gsi.go.jp/address-search/AddressSearch)、キー不要)
 - **地点の保存**: 「＋」→地図タップで保存。名前・ステータス(気になる/見学済み/候補/見送り)・★評価・メモ付き。ピンの色はステータス連動
 - **ハザードマップ重ね表示**: 洪水(想定最大規模)・土砂災害3種・津波・高潮を地図に重ねられる。濃さも調整可
 - **現在地追跡**: 📍で歩きながら現在地を追従表示
@@ -26,7 +27,7 @@
 
 ## 技術構成
 
-- 地図: [Leaflet](https://leafletjs.com/) + [地理院タイル](https://maps.gsi.go.jp/development/ichiran.html)(淡色/航空写真)
+- 地図: [Leaflet](https://leafletjs.com/)。ベースは[OpenStreetMap](https://www.openstreetmap.org/copyright)(標準)と[地理院タイル](https://maps.gsi.go.jp/development/ichiran.html)(淡色/航空写真)
 - ハザード: [重ねるハザードマップのオープンデータ配信タイル](https://disaportal.gsi.go.jp/hazardmap/copyright/opendata.html)(国土交通省/国土地理院、ズーム2〜17)
 - ビルド不要のES Modules構成:
   - `js/config.js` … タイルURL・ステータス定義(レイヤ追加はここだけ)
@@ -36,6 +37,8 @@
   - `js/app.js` … UI結線
 
 ## 拡張ポイント
+
+- **学区境界レイヤ**: 国土数値情報の小学校区(A27)・中学校区(A32)データを対象エリア分だけGeoJSON化して重ねる予定。対象の都道府県/市が決まり次第追加
 
 - **リアルタイム同期**: FirebaseのFirestoreを足せばリンク送り合い不要になる。`store.js`の保存先を差し替えるだけで済む構造にしてある
 - **写真添付**: localStorage容量の都合で未実装。同期バックエンド導入とセットでやるのが正解

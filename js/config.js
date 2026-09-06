@@ -1,7 +1,12 @@
 // アプリ全体で使う定義。レイヤやステータスを増やすときはこのファイルだけ直せばいい。
 
-// ベース地図(地理院タイル)
+// ベース地図。標準はOpenStreetMap(施設名や店名が出る現代的な見た目)、他は地理院タイル。
 export const BASE_MAPS = {
+  osm: {
+    url: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+    maxZoom: 19,
+  },
   pale: {
     url: 'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
     attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
@@ -72,6 +77,11 @@ export const STATUSES = [
 export function statusById(id) {
   return STATUSES.find((s) => s.id === id) || STATUSES[0];
 }
+
+export const DEFAULT_BASEMAP = 'osm';
+
+// 地域検索(国土地理院 住所検索API)。地名・駅名・施設名・住所を引ける。キー不要。
+export const GEOCODER_URL = 'https://msearch.gsi.go.jp/address-search/AddressSearch?q=';
 
 // 初期表示(地点も保存ビューもないとき): 日本全体
 export const DEFAULT_VIEW = { lat: 36.2, lng: 138.25, zoom: 5 };

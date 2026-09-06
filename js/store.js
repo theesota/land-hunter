@@ -4,6 +4,7 @@
 
 const SPOTS_KEY = 'tasobow.landscout.spots.v1';
 const VIEW_KEY = 'tasobow.landscout.view.v1';
+const BASEMAP_KEY = 'tasobow.landscout.basemap.v1';
 
 function genId() {
   return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -90,4 +91,13 @@ export function loadView() {
 
 export function saveView(view) {
   localStorage.setItem(VIEW_KEY, JSON.stringify(view));
+}
+
+// ベース地図の選択(次回起動時も引き継ぐ)
+export function loadBasemap() {
+  return localStorage.getItem(BASEMAP_KEY);
+}
+
+export function saveBasemap(key) {
+  localStorage.setItem(BASEMAP_KEY, key);
 }

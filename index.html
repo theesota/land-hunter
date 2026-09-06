@@ -10,21 +10,41 @@
 </head>
 <body>
 
+  <!-- アイコン定義(Feather Icons / MIT License) -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="ic-layers" viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"/><polyline points="2 12 12 17 22 12"/><polyline points="2 17 12 22 22 17"/></symbol>
+    <symbol id="ic-list" viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></symbol>
+    <symbol id="ic-share" viewBox="0 0 24 24"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></symbol>
+    <symbol id="ic-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></symbol>
+    <symbol id="ic-locate" viewBox="0 0 24 24"><circle cx="12" cy="12" r="7"/><line x1="12" y1="1" x2="12" y2="5"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="1" y1="12" x2="5" y2="12"/><line x1="19" y1="12" x2="23" y2="12"/></symbol>
+    <symbol id="ic-plus" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+    <symbol id="ic-close" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  </svg>
+
   <header class="topbar">
     <h1>土地スカウト</h1>
     <div class="topbar-actions">
-      <button id="btn-layers" class="icon-btn" title="ハザードレイヤ">🗺</button>
-      <button id="btn-list" class="icon-btn" title="地点一覧">📋</button>
-      <button id="btn-share" class="icon-btn" title="共有">🔗</button>
+      <button id="btn-layers" class="bar-btn"><svg class="icon"><use href="#ic-layers"/></svg><span>ハザード</span></button>
+      <button id="btn-list" class="bar-btn"><svg class="icon"><use href="#ic-list"/></svg><span>一覧</span></button>
+      <button id="btn-share" class="bar-btn"><svg class="icon"><use href="#ic-share"/></svg><span>共有</span></button>
     </div>
   </header>
+
+  <!-- 地域検索 -->
+  <div class="searchbar">
+    <form id="search-form" autocomplete="off">
+      <svg class="icon search-icon"><use href="#ic-search"/></svg>
+      <input type="search" id="search-input" placeholder="地名・駅名・住所で検索" enterkeyhint="search">
+    </form>
+    <ul id="search-results" hidden></ul>
+  </div>
 
   <main id="map"></main>
 
   <!-- 地図上のフローティング操作 -->
   <div class="fab-stack">
-    <button id="btn-locate" class="fab" title="現在地">📍</button>
-    <button id="btn-add" class="fab fab-primary" title="地点を追加">＋</button>
+    <button id="btn-locate" class="fab" title="現在地"><svg class="icon"><use href="#ic-locate"/></svg></button>
+    <button id="btn-add" class="fab fab-primary" title="地点を追加"><svg class="icon"><use href="#ic-plus"/></svg></button>
   </div>
   <div id="add-hint" class="add-hint" hidden>地図をタップして地点を追加</div>
 
@@ -39,12 +59,13 @@
   <section id="panel-layers" class="panel" hidden>
     <div class="panel-head">
       <h2>ハザードマップ</h2>
-      <button class="icon-btn panel-close">✕</button>
+      <button class="icon-btn panel-close" aria-label="閉じる"><svg class="icon"><use href="#ic-close"/></svg></button>
     </div>
     <div class="panel-body">
       <div class="field">
         <span class="field-label">ベース地図</span>
-        <label><input type="radio" name="basemap" value="pale" checked> 標準</label>
+        <label><input type="radio" name="basemap" value="osm" checked> 標準</label>
+        <label><input type="radio" name="basemap" value="pale"> 淡色</label>
         <label><input type="radio" name="basemap" value="photo"> 航空写真</label>
       </div>
       <div id="hazard-toggles"></div>
@@ -64,7 +85,7 @@
   <section id="panel-list" class="panel" hidden>
     <div class="panel-head">
       <h2>保存した地点</h2>
-      <button class="icon-btn panel-close">✕</button>
+      <button class="icon-btn panel-close" aria-label="閉じる"><svg class="icon"><use href="#ic-close"/></svg></button>
     </div>
     <div class="panel-body">
       <ul id="spot-list" class="spot-list"></ul>
@@ -76,7 +97,7 @@
   <section id="panel-share" class="panel" hidden>
     <div class="panel-head">
       <h2>美穂さんと共有</h2>
-      <button class="icon-btn panel-close">✕</button>
+      <button class="icon-btn panel-close" aria-label="閉じる"><svg class="icon"><use href="#ic-close"/></svg></button>
     </div>
     <div class="panel-body">
       <p class="note">共有リンクをLINEなどで送ると、開いた側が同じ地点を取り込めます。お互いに編集したら、その都度リンクを送り合って同期します。</p>

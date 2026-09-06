@@ -1,6 +1,6 @@
 // UIの結線。状態(spots)を持つのはここだけで、map/store/shareを組み合わせる。
 
-import { HAZARD_LAYERS, STATUSES, statusById } from './config.js';
+import { HAZARD_LAYERS, STATUSES, statusById, GEOCODER_URL } from './config.js';
 import {
   loadSpots, createSpot, upsertSpot, removeSpot, mergeSpots,
 } from './store.js';
@@ -65,9 +65,56 @@ for (const def of HAZARD_LAYERS) {
 }
 
 for (const radio of document.querySelectorAll('input[name="basemap"]')) {
+  radio.checked = radio.value === mapView.currentBasemap;
   radio.addEventListener('change', () => mapView.setBaseMap(radio.value));
 }
 $('#hazard-opacity').addEventListener('input', (e) => mapView.setHazardOpacity(+e.target.value));
+
+// ---- 地域検索 ----
+
+const searchResultsEl = $('#search-results');
+
+function hideSearchResults() {
+  searchResultsEl.hidden = true;
+  searchResultsEl.innerHTML = '';
+}
+
+$('#search-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const query = $('#search-input').value.trim();
+  if (!query) return;
+  try {
+    const res = await fetch(GEOCODER_URL + encodeURIComponent(query));
+    const features = await res.json();
+    renderSearchResults(features.slice(0, 8));
+  } catch {
+    showToast('検索に失敗しました(通信環境を確認してください)');
+  }
+});
+
+function renderSearchResults(features) {
+  searchResultsEl.innerHTML = '';
+  if (features.length === 0) {
+    showToast('見つかりませんでした');
+    hideSearchResults();
+    return;
+  }
+  for (const f of features) {
+    const [lng, lat] = f.geometry.coordinates;
+    const li = document.createElement('li');
+    li.textContent = f.properties.title;
+    li.addEventListener('click', () => {
+      mapView.focusSearchResult(lat, lng, f.properties.title);
+      hideSearchResults();
+      $('#search-input').blur();
+    });
+    searchResultsEl.append(li);
+  }
+  searchResultsEl.hidden = false;
+}
+
+// 地図を触ったら結果リストを閉じる
+$('#map').addEventListener('pointerdown', hideSearchResults);
 
 // ---- 追加モード / 現在地 ----
 

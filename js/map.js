@@ -3,9 +3,9 @@
 
 import {
   BASE_MAPS, HAZARD_LAYERS, HAZARD_ATTRIBUTION, HAZARD_MAX_NATIVE_ZOOM,
-  DEFAULT_VIEW, statusById,
+  DEFAULT_VIEW, DEFAULT_BASEMAP, statusById,
 } from './config.js';
-import { loadView, saveView } from './store.js';
+import { loadView, saveView, loadBasemap, saveBasemap } from './store.js';
 
 export class MapView {
   constructor(containerId, { onMapClick, onMarkerEdit }) {
@@ -21,7 +21,8 @@ export class MapView {
         maxZoom: def.maxZoom,
       });
     }
-    this.baseLayers.pale.addTo(this.map);
+    this.currentBasemap = BASE_MAPS[loadBasemap()] ? loadBasemap() : DEFAULT_BASEMAP;
+    this.baseLayers[this.currentBasemap].addTo(this.map);
 
     this.hazardOpacity = 0.7;
     this.hazardLayers = {};
@@ -52,6 +53,8 @@ export class MapView {
   setBaseMap(key) {
     for (const layer of Object.values(this.baseLayers)) this.map.removeLayer(layer);
     this.baseLayers[key].addTo(this.map);
+    this.currentBasemap = key;
+    saveBasemap(key);
   }
 
   setHazardVisible(id, visible) {
@@ -125,6 +128,15 @@ export class MapView {
     this.map.setView([spot.lat, spot.lng], Math.max(this.map.getZoom(), 16));
     const marker = this.markers.get(spot.id);
     if (marker) marker.openPopup();
+  }
+
+  // 検索結果へ移動。一時マーカーを置いて場所を分かりやすくする(次の検索で消える)。
+  focusSearchResult(lat, lng, title) {
+    this.map.setView([lat, lng], Math.max(this.map.getZoom(), 15));
+    if (this.searchMarker) this.map.removeLayer(this.searchMarker);
+    this.searchMarker = L.circleMarker([lat, lng], {
+      radius: 9, color: '#c93b3b', weight: 2.5, fillColor: '#fff', fillOpacity: 0.9,
+    }).addTo(this.map).bindPopup(title).openPopup();
   }
 
   // ---- 現在地 ----
