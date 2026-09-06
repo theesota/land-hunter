@@ -117,6 +117,7 @@ export class MapView {
   // ---- 地点マーカー ----
 
   renderSpots(spots) {
+    this.spots = spots; // ポップアップの距離計算用に保持
     const alive = new Set(spots.map((s) => s.id));
     for (const [id, marker] of this.markers) {
       if (!alive.has(id)) {
@@ -150,6 +151,11 @@ export class MapView {
     this.markers.set(spot.id, marker);
   }
 
+  _distanceLabel(a, b) {
+    const d = this.map.distance([a.lat, a.lng], [b.lat, b.lng]);
+    return d < 1000 ? `${Math.round(d)}m` : `${(d / 1000).toFixed(1)}km`;
+  }
+
   _popupHtml(spot) {
     const st = statusById(spot.status);
     const stars = spot.rating ? '★'.repeat(spot.rating) : '';
@@ -158,6 +164,10 @@ export class MapView {
     const streetview = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${spot.lat},${spot.lng}`;
     const hazard = `https://disaportal.gsi.go.jp/maps/index.html?ll=${spot.lat},${spot.lng}&z=16`;
     const memo = spot.memo ? `<p class="popup-memo">${escapeHtml(spot.memo)}</p>` : '';
+    // 基準地点(自宅・駅など)までの直線距離。基準地点自身のポップアップには出さない。
+    const refs = (this.spots || []).filter((s) => s.status === 'reference' && s.id !== spot.id);
+    const dists = spot.status !== 'reference' && refs.length
+      ? `<div class="popup-dists">${refs.map((r) => `${escapeHtml(r.name)}まで ${this._distanceLabel(spot, r)}`).join('<br>')}</div>` : '';
     const listing = spot.url
       ? `<a href="${escapeHtml(spot.url)}" target="_blank" rel="noopener" class="popup-listing">物件ページを開く</a>` : '';
     return `
@@ -168,6 +178,7 @@ export class MapView {
           <span class="popup-stars">${stars}</span>
         </div>
         ${memo}
+        ${dists}
         <div class="popup-photos" data-spot-id="${spot.id}"></div>
         ${listing}
         <div class="popup-links">

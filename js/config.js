@@ -72,6 +72,8 @@ export const STATUSES = [
   { id: 'visited', label: '見学済み', color: '#e08a00' },
   { id: 'candidate', label: '候補', color: '#1a9e50' },
   { id: 'rejected', label: '見送り', color: '#8a8a8a' },
+  // 自宅・最寄り駅・職場など、候補地までの距離を測る起点。候補地のポップアップに距離が出る。
+  { id: 'reference', label: '基準地点', color: '#d63384' },
 ];
 
 export function statusById(id) {
