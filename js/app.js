@@ -113,6 +113,7 @@ for (const radio of document.querySelectorAll('input[name="basemap"]')) {
   const rows = DEPTH_COLORS.map(({ rgb, label, note }) =>
     `<div class="legend-row"><i class="hz-swatch" style="background:rgb(${rgb})"></i><b>${label}</b><span>${note}</span></div>`);
   rows.push('<div class="legend-row legend-note">土砂災害: <i class="hz-swatch" style="background:#c1272d"></i>赤系=特別警戒区域(建築規制あり) / <i class="hz-swatch" style="background:#f5dc32"></i>黄系=警戒区域</div>');
+  rows.push('<div class="legend-row legend-note">学区は令和5年度の国土数値情報。契約前は市の最新指定を確認。</div>');
   $('#hazard-legend').innerHTML = rows.join('');
 }
 
