@@ -6,7 +6,7 @@ import {
   SCHOOL_LAYERS, DEFAULT_VIEW, DEFAULT_BASEMAP, statusById,
 } from './config.js';
 import { loadView, saveView, loadBasemap, saveBasemap } from './store.js';
-import { hazardHtml } from './landinfo.js';
+import { hazardHtml, carMinutes } from './landinfo.js';
 
 const ROAD_LABELS = { north: '北', east: '東', south: '南', west: '西' };
 
@@ -155,9 +155,12 @@ export class MapView {
     this.markers.set(spot.id, marker);
   }
 
+  // 距離+徒歩/車の目安。徒歩は30分(2.4km)を超えたら現実的でないので省く。
   _distanceLabel(a, b) {
     const d = this.map.distance([a.lat, a.lng], [b.lat, b.lng]);
-    return d < 1000 ? `${Math.round(d)}m` : `${(d / 1000).toFixed(1)}km`;
+    const dist = d < 1000 ? `${Math.round(d)}m` : `${(d / 1000).toFixed(1)}km`;
+    const walk = d <= 2400 ? `徒歩約${Math.ceil(d / 80)}分・` : '';
+    return `${dist}(${walk}車約${carMinutes(d)}分)`;
   }
 
   _popupHtml(spot) {

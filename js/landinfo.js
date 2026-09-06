@@ -28,6 +28,12 @@ const DOSHA_COLORS = {
 // 徒歩分数の換算: 不動産表示規約と同じ80m=1分(直線距離ベースの目安)
 const WALK_METERS_PER_MIN = 80;
 
+// 車分数の簡易目安: 直線距離×1.3(道のり補正)を市街地平均30km/h(=500m/分)で換算。
+// あくまで目安で、正確な所要時間はGoogleマップの車ルートリンクで確認する前提。
+export function carMinutes(meters) {
+  return Math.max(1, Math.ceil((meters * 1.3) / 500));
+}
+
 const jsonCache = new Map();
 
 function getJson(url) {
@@ -260,7 +266,7 @@ export function collectLandInfo(lat, lng, onUpdate) {
       }
     }),
     nearestStationAt(lat, lng).then((v) => {
-      if (v) info.station = `${v.name}駅(${v.line}) 徒歩約${v.walkMin}分`;
+      if (v) info.station = `${v.name}駅(${v.line}) 徒歩約${v.walkMin}分・車約${carMinutes(v.meters)}分`;
     }),
     facilitiesAt(lat, lng).then((v) => {
       if (v !== null) info.facility = v.length ? v.join(' / ') : '徒歩15分圏に主要店舗なし';
