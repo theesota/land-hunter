@@ -72,32 +72,18 @@
     <button id="btn-locate" class="fab" title="現在地"><svg class="icon"><use href="#ic-locate"/></svg></button>
   </div>
 
-  <!-- ハザードレイヤ パネル -->
-  <section id="panel-layers" class="panel" hidden>
-    <div class="panel-head">
-      <h2>表示する項目</h2>
+  <!-- 表示パネル(地図に重なるので半透明・自動高さのコンパクトカード) -->
+  <section id="panel-layers" class="panel-compact" hidden>
+    <div class="compact-head">
+      <span>表示</span>
       <button class="icon-btn panel-close" aria-label="閉じる"><svg class="icon"><use href="#ic-close"/></svg></button>
     </div>
-    <div class="panel-body">
-      <div class="field">
-        <span class="field-label">ベース地図</span>
-        <label><input type="radio" name="basemap" value="osm" checked> 標準</label>
-        <label><input type="radio" name="basemap" value="pale"> 淡色</label>
-        <label><input type="radio" name="basemap" value="photo"> 航空写真</label>
-      </div>
-      <div class="field section-divider">
-        <span class="field-label">ハザードマップ</span>
-        <div id="hazard-toggles"></div>
-        <details class="legend-box">
-          <summary>色の見方(凡例)</summary>
-          <div id="hazard-legend"></div>
-        </details>
-      </div>
-      <div class="field section-divider">
-        <span class="field-label">学区</span>
-        <div id="school-toggles"></div>
-      </div>
-    </div>
+    <div class="chip-line" id="basemap-chips"></div>
+    <div class="chip-line" id="layer-chips"></div>
+    <details class="legend-box">
+      <summary>色の見方</summary>
+      <div id="hazard-legend"></div>
+    </details>
   </section>
 
   <!-- 地点一覧 パネル -->
@@ -145,6 +131,10 @@
         </form>
         <ul id="ref-results" class="ref-results" hidden></ul>
         <button type="button" id="btn-ref-pick" class="wide-btn ghost">地図で選ぶ(ピンポイント)</button>
+      </div>
+      <div class="field section-divider">
+        <span class="field-label">表示パネルに出す項目</span>
+        <div id="enabled-toggles"></div>
       </div>
       <div class="field section-divider">
         <span class="field-label">同期の状態</span>

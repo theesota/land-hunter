@@ -2,7 +2,7 @@
 
 import { HAZARD_LAYERS, SCHOOL_LAYERS, STATUSES, statusById, GEOCODER_URL, LISTINGS_LINK } from './config.js';
 import { collectLandInfo, hazardHtml, DEPTH_COLORS, searchStations } from './landinfo.js';
-import { createSpot } from './store.js';
+import { createSpot, loadEnabledLayers, saveEnabledLayers } from './store.js';
 import {
   initData, getSpots, getMode, getInviteUrl, getBoardId, getStatus, flushPending,
   saveSpot, deleteSpot, listPhotos, addPhoto, deletePhoto, compressImage,
@@ -66,48 +66,110 @@ function togglePanel(sel) {
 $('#btn-layers').addEventListener('click', () => togglePanel('#panel-layers'));
 $('#btn-list').addEventListener('click', () => { renderList(); togglePanel('#panel-list'); });
 $('#btn-share').addEventListener('click', () => togglePanel('#panel-share'));
-$('#btn-settings').addEventListener('click', () => { renderRefList(); renderDiagnostics(); togglePanel('#panel-settings'); });
+$('#btn-settings').addEventListener('click', () => { renderRefList(); renderEnabledToggles(); renderDiagnostics(); togglePanel('#panel-settings'); });
 for (const btn of document.querySelectorAll('.panel-close')) {
   btn.addEventListener('click', closePanels);
 }
 
-// ---- ハザードレイヤUI ----
+// ---- 表示レイヤ(コンパクトなチップ) ----
 
-const togglesEl = $('#hazard-toggles');
-for (const def of HAZARD_LAYERS) {
-  const label = document.createElement('label');
-  label.className = 'hazard-toggle';
-  const cb = document.createElement('input');
-  cb.type = 'checkbox';
-  cb.checked = def.defaultOn;
-  cb.addEventListener('change', () => mapView.setHazardVisible(def.id, cb.checked));
-  label.append(cb, ` ${def.label}`);
-  togglesEl.append(label);
+// ハザードと学区をまとめて1つのリストとして扱う。
+// 「表示パネルに出す項目」(設定)で絞り込めるようにして、地図に重なるパネルを小さく保つ。
+const ALL_LAYERS = [
+  ...HAZARD_LAYERS.map((d) => ({ ...d, kind: 'hazard' })),
+  ...SCHOOL_LAYERS.map((d) => ({ ...d, kind: 'school' })),
+];
+
+let enabledIds = loadEnabledLayers() || ALL_LAYERS.map((d) => d.id);
+const activeIds = new Set(HAZARD_LAYERS.filter((d) => d.defaultOn).map((d) => d.id));
+
+const BASEMAP_LABELS = { osm: '標準', pale: '淡色', photo: '航空写真' };
+
+function renderBasemapChips() {
+  const box = $('#basemap-chips');
+  box.innerHTML = '';
+  for (const [key, label] of Object.entries(BASEMAP_LABELS)) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'mini-chip' + (mapView.currentBasemap === key ? ' active' : '');
+    btn.textContent = label;
+    btn.addEventListener('click', () => {
+      mapView.setBaseMap(key);
+      renderBasemapChips();
+    });
+    box.append(btn);
+  }
 }
 
-const schoolTogglesEl = $('#school-toggles');
-for (const def of SCHOOL_LAYERS) {
-  const label = document.createElement('label');
-  label.className = 'hazard-toggle';
-  const cb = document.createElement('input');
-  cb.type = 'checkbox';
-  cb.addEventListener('change', () => {
-    mapView.setSchoolVisible(def.id, cb.checked).catch(() => {
-      cb.checked = false;
+function setLayerActive(def, on) {
+  if (on) activeIds.add(def.id);
+  else activeIds.delete(def.id);
+  if (def.kind === 'hazard') {
+    mapView.setHazardVisible(def.id, on);
+  } else {
+    mapView.setSchoolVisible(def.id, on).catch(() => {
+      activeIds.delete(def.id);
+      renderLayerChips();
       showToast('学区データの読み込みに失敗しました');
     });
-  });
-  const swatch = document.createElement('span');
-  swatch.className = 'school-swatch';
-  swatch.style.background = def.color;
-  label.append(cb, ' ', swatch, ` ${def.label}`);
-  schoolTogglesEl.append(label);
+  }
 }
 
-for (const radio of document.querySelectorAll('input[name="basemap"]')) {
-  radio.checked = radio.value === mapView.currentBasemap;
-  radio.addEventListener('change', () => mapView.setBaseMap(radio.value));
+function renderLayerChips() {
+  const box = $('#layer-chips');
+  box.innerHTML = '';
+  for (const def of ALL_LAYERS.filter((d) => enabledIds.includes(d.id))) {
+    const on = activeIds.has(def.id);
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'mini-chip' + (on ? ' active' : '');
+    btn.textContent = def.short || def.label;
+    if (def.color) btn.style.setProperty('--chip-on', def.color);
+    btn.addEventListener('click', () => {
+      setLayerActive(def, !activeIds.has(def.id));
+      renderLayerChips();
+    });
+    box.append(btn);
+  }
+  if (!box.children.length) {
+    box.innerHTML = '<span class="note">設定で表示する項目を選んでください</span>';
+  }
 }
+
+// 設定側: 表示パネルに並べる項目を選ぶ
+function renderEnabledToggles() {
+  const box = $('#enabled-toggles');
+  box.innerHTML = '';
+  for (const def of ALL_LAYERS) {
+    const label = document.createElement('label');
+    label.className = 'hazard-toggle';
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = enabledIds.includes(def.id);
+    cb.addEventListener('change', () => {
+      enabledIds = cb.checked
+        ? [...enabledIds, def.id]
+        : enabledIds.filter((id) => id !== def.id);
+      saveEnabledLayers(enabledIds);
+      // 一覧から外した項目は地図からも消す
+      if (!cb.checked && activeIds.has(def.id)) setLayerActive(def, false);
+      renderLayerChips();
+    });
+    label.append(cb, ` ${def.label}`);
+    box.append(label);
+  }
+}
+
+// 初期状態を地図へ反映(既定でONのハザードのみ)
+for (const def of ALL_LAYERS) {
+  if (def.kind === 'hazard' && activeIds.has(def.id) && !enabledIds.includes(def.id)) {
+    activeIds.delete(def.id);
+    mapView.setHazardVisible(def.id, false);
+  }
+}
+renderBasemapChips();
+renderLayerChips();
+
 // 凡例(浸水深の色はlandinfo.jsの判定テーブルと同じものを表示)
 {
   const rows = DEPTH_COLORS.map(({ rgb, label, note }) =>

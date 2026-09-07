@@ -25,36 +25,42 @@ export const HAZARD_LAYERS = [
   {
     id: 'flood',
     label: '洪水浸水想定(想定最大規模)',
+    short: '洪水',
     url: 'https://disaportaldata.gsi.go.jp/raster/01_flood_l2_shinsuishin_data/{z}/{x}/{y}.png',
     defaultOn: true,
   },
   {
     id: 'dosekiryu',
     label: '土砂災害警戒区域(土石流)',
+    short: '土石流',
     url: 'https://disaportaldata.gsi.go.jp/raster/05_dosekiryukeikaikuiki/{z}/{x}/{y}.png',
     defaultOn: true,
   },
   {
     id: 'kyukeisha',
     label: '土砂災害警戒区域(急傾斜地)',
+    short: '急傾斜地',
     url: 'https://disaportaldata.gsi.go.jp/raster/05_kyukeishakeikaikuiki/{z}/{x}/{y}.png',
     defaultOn: true,
   },
   {
     id: 'jisuberi',
     label: '土砂災害警戒区域(地すべり)',
+    short: '地すべり',
     url: 'https://disaportaldata.gsi.go.jp/raster/05_jisuberikeikaikuiki/{z}/{x}/{y}.png',
     defaultOn: false,
   },
   {
     id: 'tsunami',
     label: '津波浸水想定',
+    short: '津波',
     url: 'https://disaportaldata.gsi.go.jp/raster/04_tsunami_newlegend_data/{z}/{x}/{y}.png',
     defaultOn: false,
   },
   {
     id: 'takashio',
     label: '高潮浸水想定',
+    short: '高潮',
     url: 'https://disaportaldata.gsi.go.jp/raster/03_hightide_l2_shinsuishin_data/{z}/{x}/{y}.png',
     defaultOn: false,
   },
@@ -83,8 +89,8 @@ export function statusById(id) {
 // 学区境界(国土数値情報 小学校区A27・中学校区A32 令和5年度、伊勢崎市分を抽出)
 // 出典: https://nlftp.mlit.go.jp/ksj/ 。他エリアを足すときはここに追記する。
 export const SCHOOL_LAYERS = [
-  { id: 'elementary', label: '小学校区(伊勢崎市)', file: 'data/school/isesaki_elementary.geojson', color: '#7c3aed' },
-  { id: 'junior', label: '中学校区(伊勢崎市)', file: 'data/school/isesaki_junior.geojson', color: '#0e7490' },
+  { id: 'elementary', label: '小学校区(伊勢崎市)', short: '小学校区', file: 'data/school/isesaki_elementary.geojson', color: '#7c3aed' },
+  { id: 'junior', label: '中学校区(伊勢崎市)', short: '中学校区', file: 'data/school/isesaki_junior.geojson', color: '#0e7490' },
 ];
 
 // 周辺の売出し情報(公開APIが存在しないため、エリアの物件一覧ページへのリンクで代替)

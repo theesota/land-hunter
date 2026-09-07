@@ -721,3 +721,60 @@ html, body {
   padding: 2px;
   cursor: pointer;
 }
+
+/* ---- 表示パネル(コンパクト・半透明) ---- */
+/* 地図の上に重なるので、必要最小限の高さと透過で下の地図を隠さない */
+
+.panel-compact {
+  position: fixed;
+  top: 62px;
+  right: 10px;
+  width: min(260px, calc(100vw - 20px));
+  padding: 8px 10px 10px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.5);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow);
+  z-index: 1100;
+}
+
+.compact-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #555;
+  margin-bottom: 6px;
+}
+.compact-head .icon-btn { padding: 2px; color: #666; }
+.compact-head .icon-btn .icon { width: 16px; height: 16px; }
+
+.chip-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-bottom: 6px;
+}
+
+.mini-chip {
+  --chip-on: var(--brand);
+  padding: 5px 10px;
+  border-radius: 14px;
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: rgba(255, 255, 255, 0.75);
+  color: #444;
+  font-size: 12px;
+  line-height: 1.2;
+  cursor: pointer;
+}
+.mini-chip.active {
+  background: var(--chip-on);
+  border-color: var(--chip-on);
+  color: #fff;
+  font-weight: 600;
+}
+
+.panel-compact .legend-box { margin-top: 2px; font-size: 11px; }
+.panel-compact .legend-box summary { padding: 2px 0; }
+.panel-compact .note { font-size: 11px; }

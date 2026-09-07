@@ -5,6 +5,7 @@
 const SPOTS_KEY = 'tasobow.landscout.spots.v1';
 const VIEW_KEY = 'tasobow.landscout.view.v1';
 const BASEMAP_KEY = 'tasobow.landscout.basemap.v1';
+const ENABLED_KEY = 'tasobow.landhunter.enabled.v1';
 
 function genId() {
   return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -87,4 +88,18 @@ export function loadBasemap() {
 
 export function saveBasemap(key) {
   localStorage.setItem(BASEMAP_KEY, key);
+}
+
+// 表示パネルに並べる項目(設定で選ぶ)。未設定ならnullを返し、呼び出し側が既定値を使う。
+export function loadEnabledLayers() {
+  try {
+    const v = JSON.parse(localStorage.getItem(ENABLED_KEY));
+    return Array.isArray(v) ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveEnabledLayers(ids) {
+  localStorage.setItem(ENABLED_KEY, JSON.stringify(ids));
 }
