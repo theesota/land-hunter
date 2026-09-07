@@ -11,8 +11,10 @@ import { hazardHtml, carMinutes } from './landinfo.js';
 const ROAD_LABELS = { north: '北', east: '東', south: '南', west: '西' };
 
 export class MapView {
-  constructor(containerId, { onMapClick, onMarkerEdit, onPopupOpen }) {
-    const view = loadView() || DEFAULT_VIEW;
+  constructor(containerId, { onMapClick, onMarkerEdit, onPopupOpen, onLocationClick }) {
+    const saved = loadView();
+    this.hadSavedView = !!saved;
+    const view = saved || DEFAULT_VIEW;
     this.map = L.map(containerId, { zoomControl: false }).setView([view.lat, view.lng], view.zoom);
     L.control.zoom({ position: 'bottomleft' }).addTo(this.map);
     L.control.scale({ imperial: false }).addTo(this.map);
@@ -46,6 +48,8 @@ export class MapView {
     this.markers = new Map(); // spot.id -> L.Marker
     this.onMarkerEdit = onMarkerEdit;
     this.onPopupOpen = onPopupOpen;
+    this.onLocationClick = onLocationClick;
+    this.currentLatLng = null;
 
     this.lastPopupClose = 0;
     this.map.on('popupclose', () => { this.lastPopupClose = Date.now(); });
@@ -251,6 +255,27 @@ export class MapView {
     }).addTo(this.map).bindPopup(title).openPopup();
   }
 
+  // 保存された地点が収まるように地図を合わせる(招待リンクで参加した直後など)
+  fitToSpots(spots) {
+    if (!spots.length) return false;
+    if (spots.length === 1) {
+      this.map.setView([spots[0].lat, spots[0].lng], 16);
+      return true;
+    }
+    this.map.fitBounds(L.latLngBounds(spots.map((s) => [s.lat, s.lng])), { padding: [50, 50], maxZoom: 16 });
+    return true;
+  }
+
+  // 追跡は始めずに一度だけ現在地へ寄せる(初回起動時用)
+  locateOnce() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => this.map.setView([pos.coords.latitude, pos.coords.longitude], 15),
+      () => {}, // 許可されなければ既定の表示のままでよい
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 600000 },
+    );
+  }
+
   // ---- 現在地 ----
 
   // 現在地追跡のトグル。歩きながら使う想定なのでwatchPositionで追従する。
@@ -261,6 +286,7 @@ export class MapView {
       if (this.locationMarker) this.map.removeLayer(this.locationMarker);
       if (this.accuracyCircle) this.map.removeLayer(this.accuracyCircle);
       this.locationMarker = this.accuracyCircle = null;
+      this.currentLatLng = null;
       return false;
     }
     if (!navigator.geolocation) {
@@ -271,10 +297,16 @@ export class MapView {
     this.watchId = navigator.geolocation.watchPosition(
       (pos) => {
         const latlng = [pos.coords.latitude, pos.coords.longitude];
+        this.currentLatLng = { lat: pos.coords.latitude, lng: pos.coords.longitude };
         if (!this.locationMarker) {
+          // 歩きながら「今いる場所」をそのまま登録できるよう、青い点自体を押せるようにする
           this.locationMarker = L.circleMarker(latlng, {
-            radius: 8, color: '#fff', weight: 2, fillColor: '#2b6fd6', fillOpacity: 1,
+            radius: 9, color: '#fff', weight: 3, fillColor: '#2b6fd6', fillOpacity: 1,
+            interactive: true, bubblingMouseEvents: false,
           }).addTo(this.map);
+          this.locationMarker.on('click', () => {
+            if (this.onLocationClick && this.currentLatLng) this.onLocationClick(this.currentLatLng);
+          });
           this.accuracyCircle = L.circle(latlng, {
             radius: pos.coords.accuracy, color: '#2b6fd6', weight: 1, fillOpacity: 0.1,
           }).addTo(this.map);

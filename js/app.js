@@ -33,6 +33,18 @@ const mapView = new MapView('map', {
     const spot = spots.find((s) => s.id === id);
     if (spot) openSpotSheet(spot);
   },
+  // 青い現在地マーカーをタップしたら、その場所をそのまま登録できる
+  onLocationClick: (latlng) => {
+    if (!$('#sheet-spot').hidden) return;
+    closePanels();
+    pendingLatLng = latlng;
+    mapView.setPendingMarker(latlng);
+    $('#confirm-text').textContent = refPickMode
+      ? `現在地を「${refPickName}」にしますか?` : '現在地を登録しますか?';
+    $('#btn-confirm-add').textContent = refPickMode ? 'ここにする' : '登録する';
+    $('#pick-hint').hidden = true;
+    $('#confirm-bar').hidden = false;
+  },
   onPopupOpen: async (spot, popupEl) => {
     const box = popupEl.querySelector('.popup-photos');
     if (!box) return;
@@ -295,6 +307,7 @@ $('#btn-pick-cancel').addEventListener('click', exitRefPick);
 $('#btn-locate').addEventListener('click', () => {
   const on = mapView.toggleLocate(showToast);
   $('#btn-locate').classList.toggle('active', on);
+  if (on) showToast('青い点をタップすると現在地を登録できます');
 });
 
 // ---- 地点フォーム(ボトムシート) ----
@@ -697,11 +710,32 @@ function renderDiagnostics() {
   $('#diag-board').textContent = getBoardId() || '-';
 }
 
+// 初回起動(前回の表示位置がない)だけ、地図の初期位置を決める。
+// 招待リンクで参加した直後は全地点が入るように、地点がなければ現在地に寄せる。
+let initialViewDone = mapView.hadSavedView;
+
+function applyInitialView() {
+  if (initialViewDone) return;
+  if (spots.length) {
+    initialViewDone = mapView.fitToSpots(spots);
+  }
+}
+
 initData({
-  onSpots: applySpots,
+  onSpots: (next) => {
+    applySpots(next);
+    applyInitialView();
+  },
   onNotice: showToast,
   onSyncStatus: renderSyncState,
 }).then(({ mode, joined }) => {
   renderSyncState();
   if (mode === 'cloud' && joined) showToast('共有ボードに参加しました');
+  // 地点が一つもなければ現在地へ(許可されなければ既定表示のまま)
+  setTimeout(() => {
+    if (!initialViewDone && spots.length === 0) {
+      initialViewDone = true;
+      mapView.locateOnce();
+    }
+  }, 1500);
 });
