@@ -164,10 +164,11 @@ html, body {
 
 /* ---- パネル ---- */
 
+/* パネルは画面の右半分まで。左半分は常に地図が見えている状態を保つ。 */
 .panel {
   position: fixed;
   top: 56px; right: 0;
-  width: min(340px, 100vw);
+  width: min(50vw, 340px);
   max-height: calc(100dvh - 56px);
   background: var(--panel-bg);
   box-shadow: var(--shadow);
@@ -180,22 +181,23 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-bottom: 1px solid #e5e5e5;
 }
-.panel-head h2 { font-size: 15px; margin: 0; }
+.panel-head h2 { font-size: 14px; margin: 0; }
 .panel-head .icon-btn { color: #666; }
 
-.panel-body { padding: 14px; overflow-y: auto; }
+.panel-body { padding: 10px 12px; overflow-y: auto; }
 
-.field { margin-bottom: 14px; }
+.field { margin-bottom: 12px; }
 .field-label { display: block; font-size: 12px; color: #666; margin-bottom: 6px; }
 .field label { margin-right: 12px; font-size: 14px; }
 
 .hazard-toggle {
   display: block;
-  padding: 7px 2px;
-  font-size: 14px;
+  padding: 6px 2px;
+  font-size: 12px;
+  line-height: 1.3;
 }
 
 .note { font-size: 12px; color: #777; line-height: 1.7; }
@@ -213,7 +215,7 @@ html, body {
   cursor: pointer;
 }
 .spot-list .dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-.spot-list .spot-name { flex: 1; font-size: 14px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.spot-list .spot-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .spot-list .spot-sub { font-size: 12px; color: #888; flex-shrink: 0; }
 
 /* ---- 共有パネル ---- */
@@ -221,13 +223,13 @@ html, body {
 .wide-btn {
   display: block;
   width: 100%;
-  padding: 12px;
+  padding: 10px 8px;
   margin-bottom: 10px;
   border: none;
   border-radius: 10px;
   background: var(--brand);
   color: #fff;
-  font-size: 14px;
+  font-size: 13px;
   cursor: pointer;
   text-align: center;
 }
@@ -632,12 +634,13 @@ html, body {
 
 #panel-settings input[type="text"], #panel-settings input[type="search"] {
   width: 100%;
-  padding: 10px;
+  padding: 8px;
   border: 1px solid #ccc;
   border-radius: 8px;
-  font-size: 16px;
-  margin-bottom: 8px;
+  font-size: 16px; /* iOSのズーム防止のため16pxは維持 */
+  margin-bottom: 6px;
   font-family: inherit;
+  min-width: 0;
 }
 .ref-search { display: flex; gap: 8px; }
 .ref-search input { flex: 1; margin-bottom: 0; }
@@ -646,8 +649,10 @@ html, body {
   border-radius: 8px;
   background: var(--brand);
   color: #fff;
-  padding: 0 14px;
+  padding: 0 10px;
+  font-size: 14px;
   cursor: pointer;
+  flex-shrink: 0;
 }
 .ref-results {
   list-style: none;
@@ -729,10 +734,11 @@ html, body {
   position: fixed;
   top: 62px;
   right: 10px;
-  width: min(260px, calc(100vw - 20px));
-  padding: 8px 10px 10px;
+  width: fit-content;
+  max-width: min(calc(50vw - 10px), 260px);
+  padding: 7px 9px 8px;
   border-radius: 14px;
-  background: rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.3);
   -webkit-backdrop-filter: blur(10px);
   backdrop-filter: blur(10px);
   box-shadow: var(--shadow);
@@ -743,9 +749,11 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   font-size: 11px;
-  color: #555;
-  margin-bottom: 6px;
+  color: #444;
+  text-shadow: 0 0 3px #fff;
+  margin-bottom: 5px;
 }
 .compact-head .icon-btn { padding: 2px; color: #666; }
 .compact-head .icon-btn .icon { width: 16px; height: 16px; }
@@ -759,10 +767,10 @@ html, body {
 
 .mini-chip {
   --chip-on: var(--brand);
-  padding: 5px 10px;
+  padding: 5px 9px;
   border-radius: 14px;
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.55);
   color: #444;
   font-size: 12px;
   line-height: 1.2;
@@ -775,6 +783,6 @@ html, body {
   font-weight: 600;
 }
 
-.panel-compact .legend-box { margin-top: 2px; font-size: 11px; }
+.panel-compact .legend-box { margin-top: 2px; font-size: 11px; text-shadow: 0 0 3px #fff; }
 .panel-compact .legend-box summary { padding: 2px 0; }
 .panel-compact .note { font-size: 11px; }

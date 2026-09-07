@@ -73,12 +73,17 @@ export async function initData({ onSpots, onNotice, onSyncStatus }) {
     await migrateLocalSpots();
     sync.watchSpots(boardId, (cloudSpots, meta) => {
       const next = cloudSpots.filter(isValidSpot);
-      // 通信できずキャッシュだけの空スナップショットで、端末内のデータを消さない
-      if (next.length === 0 && meta.fromCache && spots.length > 0) return;
-      spots = next;
-      saveSpotsLocal(spots); // オフライン起動用のキャッシュ
       status = { synced: !meta.fromCache, pending: meta.hasPendingWrites };
       onStatus(status);
+      // 空のスナップショットで端末内のデータを消さない。
+      // 手元にあってサーバーに無い地点は「消えた」のではなく「まだ上がっていない」
+      // 可能性があるため、破棄せずアップロードを試みる(データを失わない側に倒す)。
+      if (next.length === 0 && spots.length > 0) {
+        if (!meta.fromCache) rescueLocalSpots();
+        return;
+      }
+      spots = next;
+      saveSpotsLocal(spots); // オフライン起動用のキャッシュ
       notify(spots);
     }, () => onNotice && onNotice('同期エラー: 通信状況を確認してください'));
   } catch {
@@ -104,6 +109,31 @@ async function migrateLocalSpots() {
     }
     localStorage.setItem(flagKey, '1');
   } catch { /* オフライン等。次回接続時に再試行する */ }
+}
+
+// サーバーに無い手元の地点を引き上げる。二重実行しないよう一度だけ走らせる。
+let rescuing = false;
+async function rescueLocalSpots() {
+  if (rescuing) return;
+  rescuing = true;
+  try {
+    await Promise.all(spots.map((s) => sync.putSpot(boardId, s)));
+    const photos = await localPhotos.getAllPhotos().catch(() => []);
+    await Promise.all(photos.map((p) => sync.putPhoto(boardId, p)));
+  } catch { /* 次のスナップショットで再試行される */ } finally {
+    rescuing = false;
+  }
+}
+
+// 別のボード(共有ID)に切り替える。読み込み直して確実に初期化する。
+export function switchBoard(idOrUrl) {
+  const raw = String(idOrUrl).trim();
+  const id = raw.includes('#b=') ? raw.split('#b=')[1].trim() : raw;
+  if (!id || id.length < 20) return false;
+  localStorage.setItem(BOARD_KEY, id);
+  location.hash = '';
+  location.reload();
+  return true;
 }
 
 // 未送信の書き込みがサーバーに届くまで待つ(共有前の取りこぼし確認に使う)

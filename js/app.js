@@ -4,7 +4,7 @@ import { HAZARD_LAYERS, SCHOOL_LAYERS, STATUSES, statusById, GEOCODER_URL, LISTI
 import { collectLandInfo, hazardHtml, DEPTH_COLORS, searchStations } from './landinfo.js';
 import { createSpot, loadEnabledLayers, saveEnabledLayers } from './store.js';
 import {
-  initData, getSpots, getMode, getInviteUrl, getBoardId, getStatus, flushPending,
+  initData, getSpots, getMode, getInviteUrl, getBoardId, getStatus, flushPending, switchBoard,
   saveSpot, deleteSpot, listPhotos, addPhoto, deletePhoto, compressImage,
 } from './data.js';
 import { MapView } from './map.js';
@@ -581,6 +581,14 @@ function renderRefList() {
     ul.append(li);
   }
 }
+
+// 別の端末・ブラウザで開いて空のボードになったとき、共有IDを入れて元のボードに戻れる
+$('#join-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const value = $('#join-input').value.trim();
+  if (!value) return;
+  if (!switchBoard(value)) showToast('共有IDが正しくありません');
+});
 
 $('#ref-search-form').addEventListener('submit', async (e) => {
   e.preventDefault();
