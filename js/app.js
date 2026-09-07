@@ -22,6 +22,8 @@ const mapView = new MapView('map', {
   onMapClick: (latlng) => {
     // タップ → 画面下の確認バー → 登録画面。編集中や案内表示中は誤操作防止で反応しない
     if (!$('#sheet-spot').hidden || !$('#sheet-geo').hidden) return;
+    // 詳細を見ている最中の地図タップは「閉じる」。いきなり登録確認を出さない
+    if (detailSpotId) { closeDetail(); return; }
     // 初回案内は読み終わる前に地図を触られることがある。邪魔せず引っ込める。
     $('#sheet-board').hidden = true;
     closePanels();
@@ -32,9 +34,9 @@ const mapView = new MapView('map', {
     $('#pick-hint').hidden = true; // 確認バーが出たら案内は引っ込める
     $('#confirm-bar').hidden = false;
   },
-  onMarkerEdit: (id) => {
+  onMarkerSelect: (id) => {
     const spot = spots.find((s) => s.id === id);
-    if (spot) openSpotSheet(spot);
+    if (spot) openDetail(spot);
   },
   // 青い現在地マーカーをタップしたら、その場所をそのまま登録できる
   onLocationClick: (latlng) => {
@@ -48,20 +50,62 @@ const mapView = new MapView('map', {
     $('#pick-hint').hidden = true;
     $('#confirm-bar').hidden = false;
   },
-  onPopupOpen: async (spot, popupEl) => {
-    const box = popupEl.querySelector('.popup-photos');
-    if (!box) return;
-    const photos = await listPhotos(spot.id);
+});
+
+// ---- 地点の詳細(ボトムシート) ----
+
+let detailSpotId = null;
+
+async function openDetail(spot) {
+  closePanels();
+  $('#confirm-bar').hidden = true;
+  mapView.clearPendingMarker();
+  detailSpotId = spot.id;
+  const body = $('#detail-body');
+  body.innerHTML = mapView.detailHtml(spot);
+  const edit = body.querySelector('.popup-edit');
+  if (edit) edit.addEventListener('click', () => { closeDetail(); openSpotSheet(spot); });
+  const sheet = $('#sheet-detail');
+  sheet.hidden = false;
+  sheet.scrollTop = 0;
+  // シートに隠れない位置までピンを寄せる
+  mapView.revealAbove({ lat: spot.lat, lng: spot.lng }, sheet.getBoundingClientRect().height);
+  // 写真は別コレクションなので後から差し込む
+  const box = body.querySelector('.popup-photos');
+  const photos = await listPhotos(spot.id);
+  if (detailSpotId !== spot.id || !box) return;
+  box.innerHTML = '';
+  for (const photo of photos) {
+    const img = document.createElement('img');
+    img.src = photo.dataUrl;
+    img.alt = spot.name;
+    img.addEventListener('click', () => openPhotoViewer(photo.dataUrl));
+    box.append(img);
+  }
+}
+
+function bindDetailEdit(spot) {
+  const edit = $('#detail-body').querySelector('.popup-edit');
+  if (edit) edit.addEventListener('click', () => { closeDetail(); openSpotSheet(spot); });
+  listPhotos(spot.id).then((photos) => {
+    const box = $('#detail-body').querySelector('.popup-photos');
+    if (!box || detailSpotId !== spot.id) return;
     box.innerHTML = '';
     for (const photo of photos) {
       const img = document.createElement('img');
       img.src = photo.dataUrl;
-      img.alt = spot.name;
       img.addEventListener('click', () => openPhotoViewer(photo.dataUrl));
       box.append(img);
     }
-  },
-});
+  });
+}
+
+function closeDetail() {
+  detailSpotId = null;
+  $('#sheet-detail').hidden = true;
+}
+
+$('#btn-detail-close').addEventListener('click', closeDetail);
 
 // ---- パネル開閉 ----
 
@@ -75,6 +119,7 @@ function togglePanel(sel) {
   const panel = $(sel);
   const willOpen = panel.hidden;
   closePanels();
+  closeDetail(); // 一覧や設定を開くときは詳細シートを引っ込める(重ねない)
   panel.hidden = !willOpen;
 }
 
@@ -535,6 +580,7 @@ function renderLandInfo(info, loading) {
 
 async function openSpotSheet(spot) {
   closePanels();
+  closeDetail();
   currentLandInfo = spot ? spot.info : null;
   if (spot) {
     renderLandInfo(spot.info, false);
@@ -906,6 +952,15 @@ function applySpots(next) {
   spots = next.filter((s) => !s.deletedAt);
   trash = next.filter((s) => s.deletedAt);
   mapView.renderSpots(spots);
+  if (detailSpotId) {
+    const cur = spots.find((s) => s.id === detailSpotId);
+    if (cur) {
+      $('#detail-body').innerHTML = mapView.detailHtml(cur);
+      bindDetailEdit(cur);
+    } else {
+      closeDetail();
+    }
+  }
   if (!$('#panel-list').hidden) renderList();
   if (!$('#panel-settings').hidden) renderRefList();
 }

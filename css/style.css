@@ -276,6 +276,20 @@ html, body {
 
 .diag-id { cursor: pointer; }
 
+/* 詳細シート: 地図の上半分を残す高さに抑え、中身はスクロール */
+.sheet-detail {
+  max-height: 55dvh;
+  padding-top: 14px;
+  padding-right: 44px; /* 閉じるボタンの分 */
+}
+.detail-close {
+  position: absolute;
+  top: 8px; right: 8px;
+}
+.sheet-detail .popup { min-width: 0; font-size: 14px; }
+.sheet-detail .popup strong { font-size: 16px; }
+.sheet-detail .popup-info { font-size: 13px; }
+
 .sheet-title {
   margin: 0 0 10px;
   font-size: 17px;

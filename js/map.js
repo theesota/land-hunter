@@ -11,7 +11,7 @@ import { hazardHtml, carMinutes, landInfoRows } from './landinfo.js';
 const ROAD_LABELS = { north: '北', east: '東', south: '南', west: '西' };
 
 export class MapView {
-  constructor(containerId, { onMapClick, onMarkerEdit, onPopupOpen, onLocationClick }) {
+  constructor(containerId, { onMapClick, onMarkerSelect, onLocationClick }) {
     const saved = loadView();
     this.hadSavedView = !!saved;
     const view = saved || DEFAULT_VIEW;
@@ -46,18 +46,11 @@ export class MapView {
     this.map.on('zoomend', () => this._updateSchoolLabels());
 
     this.markers = new Map(); // spot.id -> L.Marker
-    this.onMarkerEdit = onMarkerEdit;
-    this.onPopupOpen = onPopupOpen;
+    this.onMarkerSelect = onMarkerSelect;
     this.onLocationClick = onLocationClick;
     this.currentLatLng = null;
 
-    this.lastPopupClose = 0;
-    this.map.on('popupclose', () => { this.lastPopupClose = Date.now(); });
-    this.map.on('click', (e) => {
-      // ポップアップを閉じるためのタップは登録確認を出さない
-      if (Date.now() - this.lastPopupClose < 150) return;
-      onMapClick(e.latlng);
-    });
+    this.map.on('click', (e) => onMapClick(e.latlng));
     this.map.on('moveend', () => {
       const c = this.map.getCenter();
       saveView({ lat: c.lat, lng: c.lng, zoom: this.map.getZoom() });
@@ -140,11 +133,7 @@ export class MapView {
 
   _upsertMarker(spot) {
     const existing = this.markers.get(spot.id);
-    if (existing) {
-      // 開いたままのポップアップが古い内容で残らないよう、先に閉じてから外す
-      existing.closePopup();
-      this.map.removeLayer(existing);
-    }
+    if (existing) this.map.removeLayer(existing);
 
     const color = statusById(spot.status).color;
     const icon = L.divIcon({
@@ -155,13 +144,9 @@ export class MapView {
       popupAnchor: [0, -30],
     });
     const marker = L.marker([spot.lat, spot.lng], { icon }).addTo(this.map);
-    marker.bindPopup(this._popupHtml(spot));
-    marker.on('popupopen', (e) => {
-      const el = e.popup.getElement();
-      const btn = el.querySelector('.popup-edit');
-      if (btn) btn.addEventListener('click', () => this.onMarkerEdit(spot.id));
-      if (this.onPopupOpen) this.onPopupOpen(spot, el);
-    });
+    // 詳細は地図上のポップアップではなく画面下のシートに出す(app.js)。
+    // ピンが画面の上寄りにあるとポップアップがヘッダーに隠れて読めないため。
+    marker.on('click', () => { if (this.onMarkerSelect) this.onMarkerSelect(spot.id); });
     this.markers.set(spot.id, marker);
   }
 
@@ -178,7 +163,8 @@ export class MapView {
     this.schoolKinds = new Set(ids);
   }
 
-  _popupHtml(spot) {
+  // 詳細シートの中身。クラス名は以前のポップアップ用CSSをそのまま使う。
+  detailHtml(spot) {
     const st = statusById(spot.status);
     const stars = spot.rating ? '★'.repeat(spot.rating) : '';
     const gmap = `https://www.google.com/maps?q=${spot.lat},${spot.lng}`;
@@ -223,8 +209,16 @@ export class MapView {
 
   focusSpot(spot) {
     this.map.setView([spot.lat, spot.lng], Math.max(this.map.getZoom(), 16));
-    const marker = this.markers.get(spot.id);
-    if (marker) marker.openPopup();
+    if (this.onMarkerSelect) this.onMarkerSelect(spot.id);
+  }
+
+  // 画面下にシート(高さ sheetPx)が出ている状態で、ピンがその上の見える範囲の真ん中に来るよう寄せる
+  revealAbove(latlng, sheetPx) {
+    const size = this.map.getSize();
+    const visibleH = Math.max(size.y - sheetPx, 120);
+    const targetY = visibleH * 0.5;
+    const pt = this.map.latLngToContainerPoint(latlng);
+    this.map.panBy([pt.x - size.x / 2, pt.y - targetY], { animate: true });
   }
 
   // タップ地点に仮マーカーを置く。確認UIは画面下のバー(app.js)が担当し、
