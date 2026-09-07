@@ -19,8 +19,8 @@ const $ = (sel) => document.querySelector(sel);
 
 const mapView = new MapView('map', {
   onMapClick: (latlng) => {
-    // タップ → 画面下の確認バー → 登録画面。編集中は誤操作防止で反応しない
-    if (!$('#sheet-spot').hidden) return;
+    // タップ → 画面下の確認バー → 登録画面。編集中や案内表示中は誤操作防止で反応しない
+    if (!$('#sheet-spot').hidden || !$('#sheet-geo').hidden) return;
     closePanels();
     pendingLatLng = latlng;
     mapView.setPendingMarker(latlng);
@@ -304,10 +304,141 @@ $('#btn-pick-cancel').addEventListener('click', exitRefPick);
 
 // ---- 現在地 ----
 
-$('#btn-locate').addEventListener('click', () => {
-  const on = mapView.toggleLocate(showToast);
+// 位置情報は一度「許可しない」を押すとブラウザが二度と聞いてこない。
+// トーストで「使えません」と出しても直しようがないので、端末別の戻し方を案内する。
+
+const GEO_REASON = {
+  1: '位置情報の利用がブロックされています。ブラウザの設定で許可し直してください。',
+  2: '現在地を取得できませんでした。屋内やビル影ではGPSが届かないことがあります。',
+  3: '現在地の取得に時間がかかりすぎました。電波の良い場所でもう一度試してください。',
+  4: '位置情報が返ってきませんでした。許可のダイアログが出なかった場合は、このサイトの位置情報が「許可」になっているか確認してください。',
+  0: 'この端末では位置情報が使えません。',
+};
+
+const isIOS = () => /iP(hone|ad|od)/.test(navigator.userAgent)
+  || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const isSafari = () => /Safari/.test(navigator.userAgent)
+  && !/(CriOS|FxiOS|EdgiOS|Chrome|Chromium|Edg)\//.test(navigator.userAgent);
+const isAndroid = () => /Android/.test(navigator.userAgent);
+
+// 「どこを押せば許可に戻せるか」は端末ごとに違うので、手順文を出し分ける。
+function permissionSteps() {
+  if (isIOS() && isSafari()) {
+    return {
+      steps: [
+        'アドレスバー左の「ぁあ」をタップ',
+        '「Webサイトの設定」を開く',
+        '「位置情報」を「許可」にする',
+        'このページを再読み込みして、もう一度「現在地」ボタンを押す',
+      ],
+      fallback: 'それでも出ないときは、iPhoneの「設定」→「プライバシーとセキュリティ」→「位置情報サービス」→「Safari Webサイト」を「このAppの使用中のみ許可」にし、「正確な位置情報」もONにしてください。',
+    };
+  }
+  if (isIOS()) {
+    return {
+      steps: [
+        'アドレスバー左のアイコンをタップ',
+        'サイトの設定/権限から「位置情報」を「許可」にする',
+        'このページを再読み込みして、もう一度「現在地」ボタンを押す',
+      ],
+      fallback: 'iPhoneの「設定」→「プライバシーとセキュリティ」→「位置情報サービス」で、使っているブラウザを「このAppの使用中のみ許可」にしてください。',
+    };
+  }
+  if (isAndroid()) {
+    return {
+      steps: [
+        'アドレスバー左の鍵アイコン(または︙)をタップ',
+        '「権限」または「サイトの設定」を開く',
+        '「位置情報」を「許可」にする',
+        'このページを再読み込みして、もう一度「現在地」ボタンを押す',
+      ],
+      fallback: '端末の「設定」→「位置情報」がOFFになっていないかも確認してください。',
+    };
+  }
+  return {
+    steps: [
+      'アドレスバー左のアイコンをクリック',
+      '「位置情報」を「許可する」に変更',
+      'ページを再読み込みして、もう一度「現在地」ボタンを押す',
+    ],
+    fallback: 'パソコンのOS側で位置情報サービスがOFFになっていると、ブラウザで許可しても取得できません。',
+  };
+}
+
+let geoTimer = null;
+
+function showGeoHelp(err) {
+  const code = err && Number.isFinite(err.code) ? err.code : 0;
+  const insecure = location.protocol !== 'https:'
+    && !['localhost', '127.0.0.1'].includes(location.hostname);
+  $('#geo-reason').textContent = insecure
+    ? '安全な接続(https)で開いていないため、ブラウザが位置情報を渡してくれません。'
+    : (GEO_REASON[code] || GEO_REASON[0]);
+
+  const ol = $('#geo-steps');
+  ol.innerHTML = '';
+  const { steps, fallback } = permissionSteps();
+  // 許可の問題(拒否/無応答)のときだけ手順を出す。電波不良は設定を触っても直らない。
+  const showSteps = !insecure && (code === 1 || code === 4);
+  ol.hidden = !showSteps;
+  if (showSteps) {
+    for (const text of steps) {
+      const li = document.createElement('li');
+      li.textContent = text;
+      ol.appendChild(li);
+    }
+  }
+  $('#geo-fallback').textContent = insecure
+    ? 'https://theesota.github.io/land-hunter/ から開いてください。'
+    : (showSteps ? fallback : '現在地が使えなくても、地図をタップすれば地点は登録できます。');
+  $('#sheet-geo').hidden = false;
+}
+
+$('#btn-geo-close').addEventListener('click', () => { $('#sheet-geo').hidden = true; });
+$('#btn-geo-retry').addEventListener('click', () => {
+  $('#sheet-geo').hidden = true;
+  startLocate();
+});
+
+async function startLocate() {
+  // 拒否済みならwatchPositionは即失敗する。先に案内を出したほうが速い。
+  if (navigator.permissions && navigator.permissions.query) {
+    try {
+      const st = await navigator.permissions.query({ name: 'geolocation' });
+      if (st.state === 'denied') {
+        $('#btn-locate').classList.remove('active');
+        showGeoHelp({ code: 1 });
+        return;
+      }
+    } catch { /* Permissions APIが無い端末は素通りしてよい */ }
+  }
+  clearTimeout(geoTimer);
+  const on = mapView.toggleLocate((err) => {
+    clearTimeout(geoTimer);
+    $('#btn-locate').classList.remove('active');
+    showGeoHelp(err);
+  }, () => clearTimeout(geoTimer));
   $('#btn-locate').classList.toggle('active', on);
-  if (on) showToast('青い点をタップすると現在地を登録できます');
+  if (on) {
+    showToast('現在地を取得中…青い点をタップすると登録できます');
+    // 許可ダイアログを放置された場合など、ブラウザが成功も失敗も返さないことがある。
+    // 待ちっぱなしにせず、こちらから打ち切って案内を出す。
+    geoTimer = setTimeout(() => {
+      mapView.stopLocate();
+      $('#btn-locate').classList.remove('active');
+      showGeoHelp({ code: 4 });
+    }, 22000);
+  }
+}
+
+$('#btn-locate').addEventListener('click', () => {
+  if ($('#btn-locate').classList.contains('active')) {
+    clearTimeout(geoTimer);
+    mapView.stopLocate();
+    $('#btn-locate').classList.remove('active');
+    return;
+  }
+  startLocate();
 });
 
 // ---- 地点フォーム(ボトムシート) ----

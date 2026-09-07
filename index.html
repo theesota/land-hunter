@@ -210,6 +210,18 @@
     </form>
   </section>
 
+  <!-- 位置情報が許可されていないときの案内 -->
+  <section id="sheet-geo" class="sheet" hidden>
+    <h2 class="sheet-title">位置情報が使えません</h2>
+    <p class="note" id="geo-reason"></p>
+    <ol class="geo-steps" id="geo-steps"></ol>
+    <p class="note" id="geo-fallback"></p>
+    <div class="sheet-actions">
+      <button type="button" id="btn-geo-close" class="ghost">閉じる</button>
+      <button type="button" id="btn-geo-retry" class="primary">許可したので再試行</button>
+    </div>
+  </section>
+
   <!-- 写真の拡大表示 -->
   <div id="photo-viewer" class="photo-viewer" hidden>
     <img id="photo-viewer-img" alt="写真">

@@ -279,18 +279,25 @@ export class MapView {
   // ---- 現在地 ----
 
   // 現在地追跡のトグル。歩きながら使う想定なのでwatchPositionで追従する。
-  toggleLocate(onError) {
+  // 追跡を止めて青い点を消す。エラー時にも呼ぶのでトグル外からも使えるようにしておく。
+  stopLocate() {
     if (this.watchId !== null) {
       navigator.geolocation.clearWatch(this.watchId);
       this.watchId = null;
-      if (this.locationMarker) this.map.removeLayer(this.locationMarker);
-      if (this.accuracyCircle) this.map.removeLayer(this.accuracyCircle);
-      this.locationMarker = this.accuracyCircle = null;
-      this.currentLatLng = null;
+    }
+    if (this.locationMarker) this.map.removeLayer(this.locationMarker);
+    if (this.accuracyCircle) this.map.removeLayer(this.accuracyCircle);
+    this.locationMarker = this.accuracyCircle = null;
+    this.currentLatLng = null;
+  }
+
+  toggleLocate(onError, onFix) {
+    if (this.watchId !== null) {
+      this.stopLocate();
       return false;
     }
     if (!navigator.geolocation) {
-      onError('この端末では位置情報が使えません');
+      onError({ code: 0, message: 'この端末では位置情報が使えません' });
       return false;
     }
     let firstFix = true;
@@ -317,10 +324,13 @@ export class MapView {
         if (firstFix) {
           this.map.setView(latlng, Math.max(this.map.getZoom(), 16));
           firstFix = false;
+          if (onFix) onFix();
         }
       },
-      () => onError('現在地を取得できませんでした(位置情報の許可を確認してください)'),
-      { enableHighAccuracy: true, maximumAge: 5000 },
+      // 失敗の理由(拒否/取得不能/タイムアウト)は呼び出し側で出し分ける。
+      // 追跡は成立していないので、状態も戻しておく。
+      (err) => { this.stopLocate(); onError(err); },
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 },
     );
     return true;
   }

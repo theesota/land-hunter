@@ -250,6 +250,21 @@ html, body {
   overflow-y: auto;
 }
 
+.sheet-title {
+  margin: 0 0 10px;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+/* 許可の戻し方は「順に押す」ものなので番号付きで見せる */
+.geo-steps {
+  margin: 10px 0;
+  padding-left: 22px;
+  font-size: 14px;
+  line-height: 1.8;
+}
+.geo-steps li { margin-bottom: 2px; }
+
 .sheet input[type="text"], .sheet textarea {
   width: 100%;
   padding: 10px;
