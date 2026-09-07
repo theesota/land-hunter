@@ -109,9 +109,16 @@ export async function initData({ onSpots, onNotice, onSyncStatus }) {
       // 空のスナップショットで端末内のデータを消さない。
       // 手元にあってサーバーに無い地点は「消えた」のではなく「まだ上がっていない」
       // 可能性があるため、破棄せずアップロードを試みる(データを失わない側に倒す)。
+      // ただし一度サーバーで確認できた地点が消えたなら、それは誰かが本当に削除したもの。
+      // それまで上げ直すと、最後の1件を完全削除できなくなる。
+      if (!meta.fromCache) for (const s of next) serverSeen.add(s.id);
       if (next.length === 0 && spots.length > 0) {
-        if (!meta.fromCache) rescueLocalSpots();
-        return;
+        if (meta.fromCache) return; // キャッシュ由来の空は判断材料にしない
+        const unconfirmed = spots.filter((s) => !serverSeen.has(s.id));
+        if (unconfirmed.length > 0) {
+          rescueLocalSpots(unconfirmed);
+          return;
+        }
       }
       spots = next;
       saveSpotsLocal(spots); // オフライン起動用のキャッシュ
@@ -144,13 +151,15 @@ async function migrateLocalSpots() {
 
 // サーバーに無い手元の地点を引き上げる。二重実行しないよう一度だけ走らせる。
 let rescuing = false;
-async function rescueLocalSpots() {
+const serverSeen = new Set(); // サーバーで存在を確認できた地点ID
+async function rescueLocalSpots(list) {
   if (rescuing) return;
   rescuing = true;
   try {
-    await Promise.all(spots.map((s) => sync.putSpot(boardId, s)));
+    const ids = new Set(list.map((s) => s.id));
+    await Promise.all(list.map((s) => sync.putSpot(boardId, s)));
     const photos = await localPhotos.getAllPhotos().catch(() => []);
-    await Promise.all(photos.map((p) => sync.putPhoto(boardId, p)));
+    await Promise.all(photos.filter((p) => ids.has(p.spotId)).map((p) => sync.putPhoto(boardId, p)));
   } catch { /* 次のスナップショットで再試行される */ } finally {
     rescuing = false;
   }
@@ -209,8 +218,29 @@ export async function saveSpot(spot) {
   return next;
 }
 
+// 削除はゴミ箱行き(deletedAtを立てるだけ)。地点も写真もそのまま残るので戻せる。
+// 共有中に誰かが誤って消しても、他の人が戻せるのがソフト削除にした理由。
 export async function deleteSpot(id) {
+  return setDeleted(id, Date.now());
+}
+
+export async function restoreSpot(id) {
+  return setDeleted(id, null);
+}
+
+async function setDeleted(id, deletedAt) {
+  const cur = spots.find((s) => s.id === id);
+  if (!cur) return;
+  const next = { ...cur, deletedAt, updatedAt: Date.now() };
+  if (deletedAt === null) delete next.deletedAt;
+  return saveSpot(next);
+}
+
+// ゴミ箱から完全に消す。ここで初めて写真も消える。
+export async function purgeSpot(id) {
   if (mode === 'cloud') {
+    spots = spots.filter((s) => s.id !== id);
+    saveSpotsLocal(spots);
     await sync.removeSpotDoc(boardId, id);
     await sync.removePhotosOfSpot(boardId, id).catch(() => {});
     return;

@@ -95,6 +95,13 @@
     <div class="panel-body">
       <ul id="spot-list" class="spot-list"></ul>
       <p id="spot-empty" class="note">まだ地点がありません。地図をタップすると登録できます。</p>
+      <div id="trash-box" class="trash-box" hidden>
+        <button type="button" id="trash-toggle" class="trash-toggle">▸ ゴミ箱 (0)</button>
+        <div id="trash-body" hidden>
+          <ul id="trash-list" class="spot-list trash-list"></ul>
+          <button type="button" id="btn-trash-empty" class="wide-btn ghost danger-text">ゴミ箱を空にする</button>
+        </div>
+      </div>
     </div>
   </section>
 

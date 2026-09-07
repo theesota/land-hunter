@@ -5,11 +5,12 @@ import { collectLandInfo, hazardHtml, DEPTH_COLORS, searchStations } from './lan
 import { createSpot, loadEnabledLayers, saveEnabledLayers } from './store.js';
 import {
   initData, getSpots, getMode, getInviteUrl, getBoardId, getStatus, flushPending, switchBoard,
-  saveSpot, deleteSpot, listPhotos, addPhoto, deletePhoto, compressImage,
+  saveSpot, deleteSpot, restoreSpot, purgeSpot, listPhotos, addPhoto, deletePhoto, compressImage,
 } from './data.js';
 import { MapView } from './map.js';
 
-let spots = [];
+let spots = []; // 生きている地点(地図と一覧に出す)
+let trash = []; // ゴミ箱の地点(deletedAtあり)
 let pendingLatLng = null; // 新規追加時のタップ位置
 let refPickMode = false;  // 設定パネルの「地図で選ぶ」で基準地点を指定中
 let refPickName = '';
@@ -648,13 +649,14 @@ $('#spot-form').addEventListener('submit', async (e) => {
 });
 
 $('#btn-spot-cancel').addEventListener('click', closeSpotSheet);
+// 戻せるので確認ダイアログは挟まない。ゴミ箱から戻す導線を一覧に置いてある。
 $('#btn-spot-delete').addEventListener('click', async () => {
   const id = $('#spot-id').value;
-  if (!id || !confirm('この地点を削除しますか?')) return;
+  if (!id) return;
   closeSpotSheet();
   try {
     await deleteSpot(id);
-    showToast('削除しました');
+    showToast('ゴミ箱に移しました(一覧から戻せます)');
   } catch {
     showToast('削除に失敗しました');
   }
@@ -681,7 +683,56 @@ function renderList() {
     });
     ul.append(li);
   }
+  renderTrash();
 }
+
+// ゴミ箱。畳んでおいて件数だけ見せる。開くと「戻す」「完全に削除」。
+let trashOpen = false;
+
+function renderTrash() {
+  const box = $('#trash-box');
+  box.hidden = trash.length === 0;
+  $('#trash-toggle').textContent = `${trashOpen ? '▾' : '▸'} ゴミ箱 (${trash.length})`;
+  const body = $('#trash-body');
+  body.hidden = !trashOpen;
+  const ul = $('#trash-list');
+  ul.innerHTML = '';
+  if (!trashOpen) return;
+  const sorted = [...trash].sort((a, b) => (b.deletedAt || 0) - (a.deletedAt || 0));
+  for (const spot of sorted) {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <span class="spot-name"></span>
+      <button type="button" class="mini-chip trash-restore">戻す</button>
+      <button type="button" class="mini-chip trash-purge">完全に削除</button>`;
+    li.querySelector('.spot-name').textContent = spot.name || '(名称未設定)';
+    li.querySelector('.trash-restore').addEventListener('click', async () => {
+      try { await restoreSpot(spot.id); showToast('戻しました'); } catch { showToast('戻せませんでした'); }
+    });
+    li.querySelector('.trash-purge').addEventListener('click', async () => {
+      // ここから先は戻れないので、ここだけ確認を挟む
+      if (!confirm(`「${spot.name || '(名称未設定)'}」を完全に削除しますか? 写真も消えます。`)) return;
+      try { await purgeSpot(spot.id); showToast('完全に削除しました'); } catch { showToast('削除に失敗しました'); }
+    });
+    ul.append(li);
+  }
+}
+
+$('#trash-toggle').addEventListener('click', () => {
+  trashOpen = !trashOpen;
+  renderTrash();
+});
+
+$('#btn-trash-empty').addEventListener('click', async () => {
+  if (trash.length === 0) return;
+  if (!confirm(`ゴミ箱の${trash.length}件を完全に削除しますか? 写真も消えて、全員の画面から消えます。`)) return;
+  try {
+    await Promise.all(trash.map((s) => purgeSpot(s.id)));
+    showToast('ゴミ箱を空にしました');
+  } catch {
+    showToast('一部削除できませんでした');
+  }
+});
 
 // ---- 設定(基準地点の管理) ----
 
@@ -835,7 +886,8 @@ function showToast(msg) {
 // ---- 起動 ----
 
 function applySpots(next) {
-  spots = next;
+  spots = next.filter((s) => !s.deletedAt);
+  trash = next.filter((s) => s.deletedAt);
   mapView.renderSpots(spots);
   if (!$('#panel-list').hidden) renderList();
   if (!$('#panel-settings').hidden) renderRefList();

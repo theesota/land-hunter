@@ -218,6 +218,17 @@ html, body {
 .spot-list .spot-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .spot-list .spot-sub { font-size: 12px; color: #888; flex-shrink: 0; }
 
+/* ゴミ箱: 一覧の下に畳んでおく */
+.trash-box { margin-top: 12px; border-top: 1px solid #e5e5e5; padding-top: 8px; }
+.trash-toggle {
+  width: 100%; text-align: left; background: none; border: none;
+  font-size: 13px; color: #666; padding: 6px 0; cursor: pointer;
+}
+.trash-list li { flex-wrap: wrap; }
+.trash-list .spot-name { color: #888; }
+.trash-list .mini-chip { flex-shrink: 0; }
+.wide-btn.danger-text { color: var(--danger); margin-top: 8px; }
+
 /* ---- 共有パネル ---- */
 
 .wide-btn {
