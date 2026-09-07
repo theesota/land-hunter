@@ -3,7 +3,7 @@
 // ハザード(配信タイルの色を読んで浸水深等を判定)、最寄り駅(同梱駅データから直線距離)。
 // 全て並列で取りに行き、取れた項目から順に返す。
 
-import { HAZARD_LAYERS, SCHOOL_LAYERS } from './config.js';
+import { HAZARD_LAYERS, SCHOOL_LAYERS, ZONE_LAYERS } from './config.js';
 
 // 洪水・津波・高潮の浸水深と色の対応。
 // 出典: 重ねるハザードマップ公式凡例(shinsui_legend3.png)から抽出し、実タイルの色と一致を確認済み。
@@ -106,6 +106,20 @@ export async function schoolsAt(lat, lng) {
     } catch { /* データ未整備エリアは黙ってスキップ */ }
   }
   return results;
+}
+
+// 区域区分。市街化調整区域は原則として住宅が建てられないので、土地探しでは最初に見るべき情報。
+export async function zoneAt(lat, lng) {
+  for (const def of ZONE_LAYERS) {
+    try {
+      const gj = await getJson(def.file);
+      const hit = gj.features.find((f) => inFeature(lat, lng, f.geometry));
+      if (!hit) continue;
+      if (hit.properties.layer === 2) return '市街化調整区域';
+      if (hit.properties.layer === 1) return '市街化区域';
+    } catch { /* データ未整備エリアは黙ってスキップ */ }
+  }
+  return null; // 伊勢崎市外など、データの範囲外
 }
 
 // ---- ハザード(タイルの色を読む) ----
@@ -271,6 +285,7 @@ export function collectLandInfo(lat, lng, onUpdate) {
   const tasks = [
     addressAt(lat, lng).then((v) => { if (v) info.address = v; }),
     schoolsAt(lat, lng).then((v) => { if (v.length) info.school = v.join(' / '); }),
+    zoneAt(lat, lng).then((v) => { if (v) info.zone = v; }),
     hazardsAt(lat, lng).then((v) => {
       if (v !== null) {
         info.hz = v;
@@ -318,11 +333,38 @@ export function facilityLines(facility) {
 
 // 土地情報の行をアイコン付きで組む。ポップアップと登録シートで同じ見た目にする。
 // address: 手直しした住所があれば自動取得より優先する
-export function landInfoRows(info, { address, schoolKinds, roads } = {}) {
+export function zoneHtml(zone) {
+  if (!zone) return '';
+  return zone === '市街化調整区域'
+    ? '<span class="zone-warn">市街化調整区域</span><small class="hz-note">原則、住宅は建てられない。例外の可否は市に確認</small>'
+    : escapeText(zone);
+}
+
+// 坪数・売り値・上下水道(手入力)を1〜2行にまとめる
+export function dealLines(spot) {
+  const out = [];
+  if (!spot) return out;
+  const area = Number(spot.area);
+  const price = Number(spot.price);
+  const parts = [];
+  if (area > 0) parts.push(`${area}坪`);
+  if (price > 0) parts.push(`${price.toLocaleString()}万円`);
+  if (area > 0 && price > 0) parts.push(`坪${(price / area).toFixed(1)}万`);
+  if (parts.length) out.push(['yen', parts.join(' / ')]);
+  const util = [];
+  if (spot.water) util.push(`上水道${spot.water === 'yes' ? 'あり' : 'なし'}`);
+  if (spot.sewer) util.push(`下水道${spot.sewer === 'yes' ? 'あり' : 'なし(浄化槽)'}`);
+  if (util.length) out.push(['drop', util.join(' / ')]);
+  return out;
+}
+
+export function landInfoRows(info, { address, schoolKinds, roads, deal } = {}) {
   const i = info || {};
   const rows = [];
   const addr = address || i.address;
   if (addr) rows.push(['pin', escapeText(addr)]);
+  if (i.zone) rows.push(['zone', zoneHtml(i.zone)]);
+  for (const r of dealLines(deal)) rows.push(r);
   const schools = schoolLines(i.school, schoolKinds);
   if (schools.length) rows.push(['school', schools.map(escapeText).join('<br>')]);
   if (i.station) rows.push(['train', escapeText(i.station)]);

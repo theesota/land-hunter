@@ -93,6 +93,12 @@ export const SCHOOL_LAYERS = [
   { id: 'junior', label: '中学校区(伊勢崎市)', short: '中学校区', file: 'data/school/isesaki_junior.geojson', color: '#0e7490' },
 ];
 
+// 区域区分(市街化区域/市街化調整区域)。国土数値情報 都市地域データ(A09, 2018年度)の伊勢崎市分。
+// layer=1 市街化区域, layer=2 市街化調整区域。調整区域は原則として住宅を建てられない。
+export const ZONE_LAYERS = [
+  { id: 'zoning', kind: 'zone', label: '市街化調整区域(伊勢崎市)', short: '調整区域', file: 'data/zone/isesaki_zoning.geojson', color: '#c2410c' },
+];
+
 // 周辺の売出し情報(公開APIが存在しないため、エリアの物件一覧ページへのリンクで代替)
 export const LISTINGS_LINK = {
   label: 'SUUMOで伊勢崎市の売土地を見る',

@@ -36,7 +36,7 @@ export function isValidSpot(s) {
     && typeof s.name === 'string';
 }
 
-export function createSpot({ lat, lng, name, status, rating, memo, url, info, roads }) {
+export function createSpot({ lat, lng, name, status, rating, memo, url, info, roads, address, area, price, water, sewer }) {
   const now = Date.now();
   return {
     id: genId(),
@@ -49,6 +49,11 @@ export function createSpot({ lat, lng, name, status, rating, memo, url, info, ro
     url: url || '',
     info: info || null, // 登録時に自動取得した土地情報(住所/学区/駅/ハザード)
     roads: roads || [], // 接道方角 north/east/south/west の配列
+    address: address || '', // 手で直した住所(空なら info.address を使う)
+    area: area || null,   // 坪数
+    price: price || null, // 売り値(万円)
+    water: water || '',   // 上水道 '' | 'yes' | 'no'
+    sewer: sewer || '',   // 下水道 '' | 'yes' | 'no'
     createdAt: now,
     updatedAt: now,
   };

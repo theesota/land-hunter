@@ -290,6 +290,14 @@ html, body {
 .sheet-detail .popup strong { font-size: 16px; }
 .sheet-detail .popup-info { font-size: 13px; }
 
+.field-row { display: flex; gap: 10px; }
+.field-row > div { flex: 1; min-width: 0; }
+.field-row input, .field-row select { width: 100%; box-sizing: border-box; }
+.sheet select {
+  font: inherit; padding: 9px 10px; border: 1px solid #d9d9d9; border-radius: 10px; background: #fff;
+}
+.zone-warn { color: var(--danger); font-weight: 700; }
+
 .sheet-title {
   margin: 0 0 10px;
   font-size: 17px;

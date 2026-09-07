@@ -1,7 +1,7 @@
 // UIの結線。地点データの出し入れはすべてdata.js経由(クラウド同期/ローカルの違いを吸収)。
 
-import { HAZARD_LAYERS, SCHOOL_LAYERS, STATUSES, statusById, GEOCODER_URL, LISTINGS_LINK } from './config.js';
-import { collectLandInfo, hazardHtml, DEPTH_COLORS, searchStations, schoolLines, facilityLines } from './landinfo.js';
+import { HAZARD_LAYERS, SCHOOL_LAYERS, ZONE_LAYERS, STATUSES, statusById, GEOCODER_URL, LISTINGS_LINK } from './config.js';
+import { collectLandInfo, hazardHtml, zoneHtml, DEPTH_COLORS, searchStations, schoolLines, facilityLines } from './landinfo.js';
 import { createSpot, loadEnabledLayers, saveEnabledLayers } from './store.js';
 import {
   initData, getSpots, getMode, getInviteUrl, getBoardId, getStatus, flushPending, switchBoard,
@@ -242,6 +242,7 @@ for (const btn of document.querySelectorAll('.panel-close')) {
 const ALL_LAYERS = [
   ...HAZARD_LAYERS.map((d) => ({ ...d, kind: 'hazard' })),
   ...SCHOOL_LAYERS.map((d) => ({ ...d, kind: 'school' })),
+  ...ZONE_LAYERS,
 ];
 
 // 既定では中学校区を出さない(設定の「表示パネルに出す項目」で戻せる)
@@ -276,7 +277,7 @@ function setLayerActive(def, on) {
     mapView.setSchoolVisible(def.id, on).catch(() => {
       activeIds.delete(def.id);
       renderLayerChips();
-      showToast('学区データの読み込みに失敗しました');
+      showToast(def.kind === 'zone' ? '区域区分データの読み込みに失敗しました' : '学区データの読み込みに失敗しました');
     });
   }
 }
@@ -347,6 +348,7 @@ renderLayerChips();
     `<div class="legend-row"><i class="hz-swatch" style="background:rgb(${rgb})"></i><b>${label}</b><span>${note}</span></div>`);
   rows.push('<div class="legend-row legend-note">土砂災害: <i class="hz-swatch" style="background:#c1272d"></i>赤系=特別警戒区域(建築規制あり) / <i class="hz-swatch" style="background:#f5dc32"></i>黄系=警戒区域</div>');
   rows.push('<div class="legend-row legend-note">学区は令和5年度の国土数値情報。契約前は市の最新指定を確認。</div>');
+  rows.push('<div class="legend-row legend-note">調整区域(橙の斜線)は原則、住宅を建てられない。2018年度の国土数値情報なので市の都市計画図で最終確認。</div>');
   $('#hazard-legend').innerHTML = rows.join('');
 }
 
@@ -502,12 +504,12 @@ function permissionSteps() {
   if (isIOS() && isSafari()) {
     return {
       steps: [
-        'アドレスバー左の「ぁあ」をタップ',
-        'メニュー右下の「…」をタップ',
-        '「Webサイトの設定」→「位置情報」を「許可」にする',
-        'このページを再読み込みして、もう一度「現在地」ボタンを押す',
+        'iPhoneの「設定」→「プライバシーとセキュリティ」→「位置情報サービス」を開く',
+        '一番上の「位置情報サービス」がオンになっているか確認',
+        '一覧から「Safari Webサイト」を開き「このAppの使用中のみ許可」にする。「正確な位置情報」もオン',
+        'Safariに戻ってこのページを再読み込みし、もう一度「現在地」ボタンを押す',
       ],
-      fallback: '「Webサイトの設定」が出てこないときは、iPhoneの「設定」→「アプリ」→「Safari」→「Webサイトの設定」→「位置情報」からでも変えられます。それでもダメなら「設定」→「プライバシーとセキュリティ」→「位置情報サービス」で「Safari Webサイト」を「このAppの使用中のみ許可」にし、「正確な位置情報」もONにしてください。',
+      fallback: 'それでも取れないときは「設定」→「アプリ」→「Safari」→「Webサイトの設定」→「位置情報」が「拒否」になっていないか確認し、「確認」か「許可」にしてください。',
     };
   }
   if (isIOS()) {
@@ -678,6 +680,7 @@ for (const b of $('#spot-rating').children) {
 
 const INFO_ROWS = [
   ['address', '住所'],
+  ['zone', '区域区分'],
   ['school', '学区'],
   ['station', '最寄り駅'],
   ['facility', '周辺施設'],
@@ -690,6 +693,8 @@ function renderLandInfo(info, loading) {
     let value;
     if (key === 'hazard' && info && (info.hz || info.hazard)) {
       value = hazardHtml(info);
+    } else if (key === 'zone' && info && info.zone) {
+      value = zoneHtml(info.zone);
     } else if (key === 'school' && info && info.school) {
       value = schoolLines(info.school, new Set(schoolKindIds())).join('<br>') || '-';
     } else if (key === 'facility' && info && info.facility) {
@@ -734,6 +739,10 @@ async function openSpotSheet(spot) {
   $('#spot-url').value = spot && spot.url ? spot.url : '';
   // 自動取得は町丁目まで。番地は歩いて見た表札や現地の看板から手で足す前提。
   $('#spot-address').value = spot ? (spot.address || (spot.info && spot.info.address) || '') : '';
+  $('#spot-area').value = spot && spot.area ? spot.area : '';
+  $('#spot-price').value = spot && spot.price ? spot.price : '';
+  $('#spot-water').value = spot && spot.water ? spot.water : '';
+  $('#spot-sewer').value = spot && spot.sewer ? spot.sewer : '';
   setFormStatus(spot ? spot.status : STATUSES[0].id);
   setFormRating(spot ? spot.rating : 0);
   setFormRoads(spot ? spot.roads : []);
@@ -808,6 +817,10 @@ $('#spot-form').addEventListener('submit', async (e) => {
     memo: $('#spot-memo').value.trim(),
     url: $('#spot-url').value.trim(),
     address: $('#spot-address').value.trim(),
+    area: parseFloat($('#spot-area').value) || null,
+    price: parseFloat($('#spot-price').value) || null,
+    water: $('#spot-water').value,
+    sewer: $('#spot-sewer').value,
     roads: formRoads,
   };
   let savedId = id;
@@ -863,7 +876,7 @@ function renderList() {
     li.innerHTML = `
       <span class="dot" style="background:${st.color}"></span>
       <span class="spot-name"></span>
-      <span class="spot-sub">${st.label}${spot.rating ? ' ' + '★'.repeat(spot.rating) : ''}</span>`;
+      <span class="spot-sub">${[st.label, spot.area ? `${spot.area}坪` : '', spot.price ? `${spot.price}万` : ''].filter(Boolean).join(' ')}${spot.rating ? ' ' + '★'.repeat(spot.rating) : ''}</span>`;
     li.querySelector('.spot-name').textContent = spot.name || '(名称未設定)';
     li.addEventListener('click', () => {
       closePanels();

@@ -3,7 +3,7 @@
 
 import {
   BASE_MAPS, HAZARD_LAYERS, HAZARD_ATTRIBUTION, HAZARD_MAX_NATIVE_ZOOM,
-  SCHOOL_LAYERS, DEFAULT_VIEW, DEFAULT_BASEMAP, statusById,
+  SCHOOL_LAYERS, ZONE_LAYERS, DEFAULT_VIEW, DEFAULT_BASEMAP, statusById,
 } from './config.js';
 import { loadView, saveView, loadBasemap, saveBasemap } from './store.js';
 import { hazardHtml, carMinutes, landInfoRows } from './landinfo.js';
@@ -78,23 +78,34 @@ export class MapView {
   async setSchoolVisible(id, visible) {
     let entry = this.schoolLayers.get(id);
     if (!entry) {
-      const def = SCHOOL_LAYERS.find((d) => d.id === id);
+      const def = [...SCHOOL_LAYERS, ...ZONE_LAYERS].find((d) => d.id === id);
       const res = await fetch(def.file);
       const geojson = await res.json();
       const labels = L.layerGroup();
+      const isZone = def.kind === 'zone';
       // interactive:false が重要。校区の面がタップを吸うと、学区表示中に
       // 地図をタップして地点登録ができなくなる(校名はラベルで確認できる)。
       const polygons = L.geoJSON(geojson, {
         interactive: false,
-        style: { color: def.color, weight: 2, fillColor: def.color, fillOpacity: 0.06, dashArray: '4 3' },
+        // 区域区分は「調整区域」だけを目立たせる。市街化区域は境界線のみ薄く。
+        style: (feature) => (isZone
+          ? (feature.properties.layer === 2
+            ? { color: def.color, weight: 2, fillColor: def.color, fillOpacity: 0.10, dashArray: '6 4' }
+            : { color: def.color, weight: 1, fillOpacity: 0, dashArray: '2 4', opacity: 0.5 })
+          : { color: def.color, weight: 2, fillColor: def.color, fillOpacity: 0.06, dashArray: '4 3' }),
+        filter: (feature) => !isZone || feature.properties.layer === 1 || feature.properties.layer === 2,
         onEachFeature: (feature, l) => {
-          // 校区の中心に学校名ラベル。中心置きなら形が歪な校区でもエリア外に出にくい。
+          const text = isZone
+            ? (feature.properties.layer === 2 ? '市街化調整区域' : '')
+            : feature.properties.name;
+          if (!text) return;
+          // 面の中心にラベル。中心置きなら形が歪な区域でもエリア外に出にくい。
           labels.addLayer(L.marker(l.getBounds().getCenter(), {
             interactive: false,
             icon: L.divIcon({
               className: 'school-label-wrap',
               iconSize: null,
-              html: `<span class="school-label" style="color:${def.color}">${escapeHtml(feature.properties.name)}</span>`,
+              html: `<span class="school-label" style="color:${def.color}">${escapeHtml(text)}</span>`,
             }),
           }));
         },
@@ -173,7 +184,7 @@ export class MapView {
     const hazard = `https://disaportal.gsi.go.jp/maps/index.html?ll=${spot.lat},${spot.lng}&z=16`;
     const memo = spot.memo ? `<p class="popup-memo">${escapeHtml(spot.memo)}</p>` : '';
     const roads = (spot.roads || []).map((d) => ROAD_LABELS[d]).filter(Boolean);
-    const rowsHtml = landInfoRows(spot.info, { address: spot.address, schoolKinds: this.schoolKinds, roads });
+    const rowsHtml = landInfoRows(spot.info, { address: spot.address, schoolKinds: this.schoolKinds, roads, deal: spot });
     const infoHtml = rowsHtml ? `<div class="popup-info">${rowsHtml}</div>` : '';
     // 基準地点(自宅・駅など)までの直線距離。基準地点自身のポップアップには出さない。
     const refs = (this.spots || []).filter((s) => s.status === 'reference' && s.id !== spot.id);
