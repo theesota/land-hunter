@@ -128,14 +128,35 @@ export async function youtoAt(lat, lng) {
     const hit = gj.features.find((f) => inFeature(lat, lng, f.geometry));
     if (hit) {
       const p = hit.properties;
-      return `${p.n}(建ぺい${p.bcr}%・容積${p.far}%)`;
+      return { text: `${p.n}(建ぺい${p.bcr}%・容積${p.far}%)`, bcr: p.bcr, far: p.far };
     }
     const tk = await getJson(TOKUTEI_FILE);
     const t = tk.features.find((f) => inFeature(lat, lng, f.geometry));
-    if (t) return `特定用途制限地域: ${t.properties.n}`;
+    if (t) return { text: `特定用途制限地域: ${t.properties.n}` };
   } catch { /* 取れなければ出さない */ }
   return null;
 }
+
+// 建ぺい率・容積率。数値で保存していない古い地点は表示文字列から拾う。
+export function buildRatios(info) {
+  if (!info) return null;
+  if (info.bcr && info.far) return { bcr: info.bcr, far: info.far };
+  const m = /建ぺい(\d+)%・容積(\d+)%/.exec(info.youto || '');
+  return m ? { bcr: +m[1], far: +m[2] } : null;
+}
+
+// 坪数 × 建ぺい率/容積率 = この土地に建てられる大きさの目安
+const TSUBO_M2 = 3.30579;
+export function buildableText(info, area) {
+  const r = buildRatios(info);
+  const a = Number(area);
+  if (!r || !(a > 0)) return '';
+  const floor1 = a * r.bcr / 100;
+  const total = a * r.far / 100;
+  const f = (t) => `${t.toFixed(1)}坪(${Math.round(t * TSUBO_M2)}㎡)`;
+  return `1階 最大${f(floor1)} / 延床 最大${f(total)}`;
+}
+export const BUILDABLE_NOTE = '延床は前面道路の幅で下がることがある(住居系で4m道路なら容積160%が上限)';
 
 // ---- ハザード(タイルの色を読む) ----
 
@@ -301,7 +322,12 @@ export function collectLandInfo(lat, lng, onUpdate) {
     addressAt(lat, lng).then((v) => { if (v) info.address = v; }),
     schoolsAt(lat, lng).then((v) => { if (v.length) info.school = v.join(' / '); }),
     zoneAt(lat, lng).then((v) => { if (v) info.zone = v; }),
-    youtoAt(lat, lng).then((v) => { if (v) info.youto = v; }),
+    youtoAt(lat, lng).then((v) => {
+      if (v) {
+        info.youto = v.text;
+        if (v.bcr) { info.bcr = v.bcr; info.far = v.far; }
+      }
+    }),
     hazardsAt(lat, lng).then((v) => {
       if (v !== null) {
         info.hz = v;
@@ -371,6 +397,8 @@ export function dealLines(spot) {
   if (spot.water) util.push(`上水道${spot.water === 'yes' ? 'あり' : 'なし'}`);
   if (spot.sewer) util.push(`下水道${spot.sewer === 'yes' ? 'あり' : 'なし(浄化槽)'}`);
   if (util.length) out.push(['drop', util.join(' / ')]);
+  const build = buildableText(spot.info, spot.area);
+  if (build) out.push(['home', `${escapeText(build)}<small class="hz-note">${escapeText(BUILDABLE_NOTE)}</small>`]);
   return out;
 }
 

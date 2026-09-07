@@ -1,7 +1,7 @@
-(node:1895) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
+(node:1637) [DEP0040] DeprecationWarning: The `punycode` module is deprecated. Please use a userland alternative instead.
 (Use `node --trace-deprecation ...` to show where the warning was created)
 ⚠  emulators: You are not currently authenticated so some features may not work correctly. Please run firebase login to authenticate the CLI.
-(node:1895) MetadataLookupWarning: received unexpected error = Request failed with status code 502 code = UNKNOWN
+(node:1637) MetadataLookupWarning: received unexpected error = Request failed with status code 502 code = UNKNOWN
 MetadataLookupWarning: received unexpected error = Request failed with status code 502 code = UNKNOWN
     at Object.isAvailable (/root/.npm/_npx/7750544ccf494d8b/node_modules/gcp-metadata/build/src/index.js:356:25)
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)

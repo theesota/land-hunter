@@ -1,7 +1,7 @@
 // UIの結線。地点データの出し入れはすべてdata.js経由(クラウド同期/ローカルの違いを吸収)。
 
 import { HAZARD_LAYERS, SCHOOL_LAYERS, ZONE_LAYERS, STATUSES, statusById, GEOCODER_URL, LISTINGS_LINK } from './config.js';
-import { collectLandInfo, hazardHtml, zoneHtml, DEPTH_COLORS, searchStations, schoolLines, facilityLines } from './landinfo.js';
+import { collectLandInfo, hazardHtml, zoneHtml, buildableText, BUILDABLE_NOTE, DEPTH_COLORS, searchStations, schoolLines, facilityLines } from './landinfo.js';
 import { createSpot, loadEnabledLayers, saveEnabledLayers } from './store.js';
 import {
   initData, getSpots, getMode, getInviteUrl, getBoardId, getStatus, flushPending, switchBoard,
@@ -623,6 +623,9 @@ $('#btn-locate').addEventListener('click', () => {
   startLocate();
 });
 
+// 坪数を打ち直したら「建てられる目安」を追従させる
+$('#spot-area').addEventListener('input', () => renderLandInfo(currentLandInfo, false));
+
 // ---- 地点フォーム(ボトムシート) ----
 
 let formStatus = STATUSES[0].id;
@@ -682,6 +685,7 @@ const INFO_ROWS = [
   ['address', '住所'],
   ['zone', '区域区分'],
   ['youto', '用途地域'],
+  ['build', '建てられる目安'],
   ['school', '学区'],
   ['station', '最寄り駅'],
   ['facility', '周辺施設'],
@@ -696,6 +700,10 @@ function renderLandInfo(info, loading) {
       value = hazardHtml(info);
     } else if (key === 'zone' && info && info.zone) {
       value = zoneHtml(info.zone);
+    } else if (key === 'build') {
+      // 坪数の入力に合わせてその場で計算する(用途地域が取れてからでないと出ない)
+      const t = buildableText(info, $('#spot-area').value);
+      value = t ? `${t}<small class="hz-note">${BUILDABLE_NOTE}</small>` : (info && info.youto ? '坪数を入れると出ます' : (loading ? '取得中…' : '-'));
     } else if (key === 'school' && info && info.school) {
       value = schoolLines(info.school, new Set(schoolKindIds())).join('<br>') || '-';
     } else if (key === 'facility' && info && info.facility) {
