@@ -53,10 +53,16 @@ function clean(obj) {
 }
 
 // 地点の変更を購読。誰かが編集すると全員のonSpotsが呼ばれる。
+// metaでサーバー確定済みか(fromCache)、送信待ちがあるか(hasPendingWrites)が分かる。
+// これを見ないと「自分の端末にだけ見えている未送信データ」を同期済みと誤認する。
 export function watchSpots(boardId, onSpots, onError) {
   return fs.onSnapshot(
     spotsCol(boardId),
-    (snap) => onSpots(snap.docs.map((d) => ({ ...d.data(), id: d.id }))),
+    { includeMetadataChanges: true },
+    (snap) => onSpots(
+      snap.docs.map((d) => ({ ...d.data(), id: d.id })),
+      { fromCache: snap.metadata.fromCache, hasPendingWrites: snap.metadata.hasPendingWrites },
+    ),
     onError,
   );
 }
@@ -92,8 +98,15 @@ export async function removePhotosOfSpot(boardId, spotId) {
   await Promise.all(photos.map((p) => removePhotoDoc(boardId, p.id)));
 }
 
-// 既存の地点があるかどうか(ローカルデータの初回アップロード判定に使う)
+// 既存の地点があるかどうか(ローカルデータの初回アップロード判定に使う)。
+// キャッシュではなくサーバーに問い合わせる。オフライン時は例外になり、
+// 呼び出し側は「判定できなかった」として次回起動に持ち越す。
 export async function isEmpty(boardId) {
-  const snap = await fs.getDocs(fs.query(spotsCol(boardId), fs.limit(1)));
+  const snap = await fs.getDocsFromServer(fs.query(spotsCol(boardId), fs.limit(1)));
   return snap.empty;
+}
+
+// 未送信の書き込みが残らずサーバーに届くまで待つ
+export function waitForPendingWrites() {
+  return fs.waitForPendingWrites(db);
 }

@@ -4,7 +4,7 @@ import { HAZARD_LAYERS, SCHOOL_LAYERS, STATUSES, statusById, GEOCODER_URL, LISTI
 import { collectLandInfo, hazardHtml, DEPTH_COLORS, searchStations } from './landinfo.js';
 import { createSpot } from './store.js';
 import {
-  initData, getSpots, getMode, getInviteUrl,
+  initData, getSpots, getMode, getInviteUrl, getBoardId, getStatus, flushPending,
   saveSpot, deleteSpot, listPhotos, addPhoto, deletePhoto, compressImage,
 } from './data.js';
 import { MapView } from './map.js';
@@ -66,7 +66,7 @@ function togglePanel(sel) {
 $('#btn-layers').addEventListener('click', () => togglePanel('#panel-layers'));
 $('#btn-list').addEventListener('click', () => { renderList(); togglePanel('#panel-list'); });
 $('#btn-share').addEventListener('click', () => togglePanel('#panel-share'));
-$('#btn-settings').addEventListener('click', () => { renderRefList(); togglePanel('#panel-settings'); });
+$('#btn-settings').addEventListener('click', () => { renderRefList(); renderDiagnostics(); togglePanel('#panel-settings'); });
 for (const btn of document.querySelectorAll('.panel-close')) {
   btn.addEventListener('click', closePanels);
 }
@@ -544,7 +544,25 @@ $('#ref-search-form').addEventListener('submit', async (e) => {
 
 // 招待リンクは短い固定URL。受け取った人が開くだけで同じボードに参加でき、
 // 以降はお互いの編集がリアルタイムで反映される。
+// 共有する前に、未送信の書き込みを送り切ってからリンクを渡す。
+// これをしないと「リンクは送ったのに相手に地点が見えない」が起きる。
+async function ensureSynced() {
+  if (getMode() !== 'cloud') {
+    showToast('クラウド未接続です(この端末にのみ保存されています)');
+    return false;
+  }
+  if (!getStatus().pending) return true;
+  showToast('未送信のデータを送信中…');
+  const done = await Promise.race([
+    flushPending().then(() => true),
+    new Promise((r) => setTimeout(() => r(false), 8000)),
+  ]);
+  if (!done) showToast('送信が完了しません。通信状況を確認してください');
+  return done;
+}
+
 $('#btn-copy-link').addEventListener('click', async () => {
+  await ensureSynced();
   const url = getInviteUrl();
   try {
     await navigator.clipboard.writeText(url);
@@ -554,7 +572,8 @@ $('#btn-copy-link').addEventListener('click', async () => {
   }
 });
 
-$('#btn-share-native').addEventListener('click', () => {
+$('#btn-share-native').addEventListener('click', async () => {
+  await ensureSynced();
   const url = getInviteUrl();
   if (navigator.share) {
     navigator.share({ title: '土地ハンター', text: '土地探しの地図を共有します', url }).catch(() => {});
@@ -583,17 +602,44 @@ function applySpots(next) {
   if (!$('#panel-settings').hidden) renderRefList();
 }
 
+// バッジは「本当にサーバーに届いているか」を映す。
+// 未送信が残っている間を「同期中」と表示すると、共有できていない事実が隠れてしまう。
+function renderSyncState() {
+  const badge = $('#sync-state');
+  if (getMode() !== 'cloud') {
+    badge.textContent = 'この端末のみ';
+    badge.className = 'sync-state off';
+    return;
+  }
+  const st = getStatus();
+  if (st.pending) {
+    badge.textContent = '保存待ち';
+    badge.className = 'sync-state warn';
+  } else if (st.synced) {
+    badge.textContent = '同期済み';
+    badge.className = 'sync-state on';
+  } else {
+    badge.textContent = 'オフライン';
+    badge.className = 'sync-state warn';
+  }
+  if (!$('#panel-settings').hidden) renderDiagnostics();
+}
+
+function renderDiagnostics() {
+  const st = getStatus();
+  const state = getMode() !== 'cloud' ? 'この端末のみ(未接続)'
+    : st.pending ? '保存待ち(未送信あり)'
+      : st.synced ? '同期済み' : 'オフライン';
+  $('#diag-state').textContent = state;
+  $('#diag-count').textContent = `${spots.length}件`;
+  $('#diag-board').textContent = getBoardId() || '-';
+}
+
 initData({
   onSpots: applySpots,
   onNotice: showToast,
+  onSyncStatus: renderSyncState,
 }).then(({ mode, joined }) => {
-  const badge = $('#sync-state');
-  if (mode === 'cloud') {
-    badge.textContent = '同期中';
-    badge.className = 'sync-state on';
-    if (joined) showToast('共有ボードに参加しました');
-  } else {
-    badge.textContent = 'この端末のみ';
-    badge.className = 'sync-state off';
-  }
+  renderSyncState();
+  if (mode === 'cloud' && joined) showToast('共有ボードに参加しました');
 });

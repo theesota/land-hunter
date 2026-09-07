@@ -16,6 +16,11 @@ let mode = 'local'; // 'cloud' | 'local'
 let boardId = null;
 let spots = [];
 let notify = () => {};
+let onStatus = () => {};
+// サーバーに確定済みか。未送信の書き込みが残っている間は「保存待ち」を出す。
+let status = { synced: false, pending: false };
+
+export function getStatus() { return status; }
 
 export function getMode() { return mode; }
 export function getBoardId() { return boardId; }
@@ -51,8 +56,9 @@ function resolveBoardId() {
 }
 
 // onSpots: 地点が変わるたびに呼ばれる(自分の編集でも他の人の編集でも)
-export async function initData({ onSpots, onNotice }) {
+export async function initData({ onSpots, onNotice, onSyncStatus }) {
   notify = onSpots;
+  onStatus = onSyncStatus || (() => {});
   const resolved = resolveBoardId();
   boardId = resolved.id;
   spots = loadLocalSpots();
@@ -65,9 +71,14 @@ export async function initData({ onSpots, onNotice }) {
     mode = 'cloud';
     // この端末にだけある地点を初回に引き上げる(共有に切り替える前のデータ救済)
     await migrateLocalSpots();
-    sync.watchSpots(boardId, (cloudSpots) => {
-      spots = cloudSpots.filter(isValidSpot);
+    sync.watchSpots(boardId, (cloudSpots, meta) => {
+      const next = cloudSpots.filter(isValidSpot);
+      // 通信できずキャッシュだけの空スナップショットで、端末内のデータを消さない
+      if (next.length === 0 && meta.fromCache && spots.length > 0) return;
+      spots = next;
       saveSpotsLocal(spots); // オフライン起動用のキャッシュ
+      status = { synced: !meta.fromCache, pending: meta.hasPendingWrites };
+      onStatus(status);
       notify(spots);
     }, () => onNotice && onNotice('同期エラー: 通信状況を確認してください'));
   } catch {
@@ -83,6 +94,8 @@ async function migrateLocalSpots() {
   const flagKey = `tasobow.landhunter.migrated.${boardId}`;
   if (localStorage.getItem(flagKey)) return;
   try {
+    // サーバーに直接問い合わせる。オフラインなら例外になり、
+    // フラグを立てずに次回起動へ持ち越す(取りこぼし防止)。
     if (await sync.isEmpty(boardId)) {
       await Promise.all(local.map((s) => sync.putSpot(boardId, s)));
       // 端末内の写真も一緒に引き上げる
@@ -90,7 +103,14 @@ async function migrateLocalSpots() {
       await Promise.all(photos.map((p) => sync.putPhoto(boardId, p)));
     }
     localStorage.setItem(flagKey, '1');
-  } catch { /* 失敗しても通常利用は続行できる */ }
+  } catch { /* オフライン等。次回接続時に再試行する */ }
+}
+
+// 未送信の書き込みがサーバーに届くまで待つ(共有前の取りこぼし確認に使う)
+export async function flushPending() {
+  if (mode !== 'cloud') return false;
+  await sync.waitForPendingWrites();
+  return true;
 }
 
 // ---- 地点 ----

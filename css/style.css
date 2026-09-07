@@ -683,6 +683,17 @@ html, body {
 }
 .sync-state.on { background: rgba(255, 255, 255, 0.25); }
 .sync-state.off { background: #b3541e; }
+.sync-state.warn { background: #c77700; }
+
+.diag-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 0;
+  font-size: 13px;
+}
+.diag-row span { color: #777; }
+.diag-id { font-size: 11px; word-break: break-all; text-align: right; }
 
 /* 基準地点を地図で選んでいる最中の案内 */
 .pick-hint {
