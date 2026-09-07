@@ -21,6 +21,8 @@ const mapView = new MapView('map', {
   onMapClick: (latlng) => {
     // タップ → 画面下の確認バー → 登録画面。編集中や案内表示中は誤操作防止で反応しない
     if (!$('#sheet-spot').hidden || !$('#sheet-geo').hidden) return;
+    // 初回案内は読み終わる前に地図を触られることがある。邪魔せず引っ込める。
+    $('#sheet-board').hidden = true;
     closePanels();
     pendingLatLng = latlng;
     mapView.setPendingMarker(latlng);
@@ -327,11 +329,11 @@ function permissionSteps() {
     return {
       steps: [
         'アドレスバー左の「ぁあ」をタップ',
-        '「Webサイトの設定」を開く',
-        '「位置情報」を「許可」にする',
+        'メニュー右下の「…」をタップ',
+        '「Webサイトの設定」→「位置情報」を「許可」にする',
         'このページを再読み込みして、もう一度「現在地」ボタンを押す',
       ],
-      fallback: 'それでも出ないときは、iPhoneの「設定」→「プライバシーとセキュリティ」→「位置情報サービス」→「Safari Webサイト」を「このAppの使用中のみ許可」にし、「正確な位置情報」もONにしてください。',
+      fallback: '「Webサイトの設定」が出てこないときは、iPhoneの「設定」→「アプリ」→「Safari」→「Webサイトの設定」→「位置情報」からでも変えられます。それでもダメなら「設定」→「プライバシーとセキュリティ」→「位置情報サービス」で「Safari Webサイト」を「このAppの使用中のみ許可」にし、「正確な位置情報」もONにしてください。',
     };
   }
   if (isIOS()) {
@@ -718,8 +720,31 @@ $('#join-form').addEventListener('submit', (e) => {
   e.preventDefault();
   const value = $('#join-input').value.trim();
   if (!value) return;
-  if (!switchBoard(value)) showToast('共有IDが正しくありません');
+  const carry = $('#join-carry').checked;
+  if (!switchBoard(value, { carry })) showToast('共有IDが正しくありません');
 });
+
+// 共有IDは3人で見比べるためのもの。長いので手打ちさせずコピーできるようにする。
+$('#diag-board').addEventListener('click', async () => {
+  const id = getBoardId();
+  if (!id) return;
+  try {
+    await navigator.clipboard.writeText(getInviteUrl());
+    showToast('招待リンクをコピーしました');
+  } catch {
+    prompt('このリンクを送ってください', getInviteUrl());
+  }
+});
+
+$('#board-join-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const value = $('#board-join-input').value.trim();
+  if (!value) return;
+  // 初回なので手元に地点はほぼ無いが、あれば一緒に持ち込む
+  if (!switchBoard(value, { carry: true })) showToast('招待リンクが正しくありません');
+});
+
+$('#btn-board-new').addEventListener('click', () => { $('#sheet-board').hidden = true; });
 
 $('#ref-search-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -841,6 +866,8 @@ function renderSyncState() {
 
 function renderDiagnostics() {
   const st = getStatus();
+  $('#join-carry-label').textContent = spots.length
+    ? `この端末の${spots.length}件も持ち込む` : 'この端末の地点も持ち込む';
   const state = getMode() !== 'cloud' ? 'この端末のみ(未接続)'
     : st.pending ? '保存待ち(未送信あり)'
       : st.synced ? '同期済み' : 'オフライン';
@@ -867,9 +894,13 @@ initData({
   },
   onNotice: showToast,
   onSyncStatus: renderSyncState,
-}).then(({ mode, joined }) => {
+}).then(({ mode, joined, created }) => {
   renderSyncState();
   if (mode === 'cloud' && joined) showToast('共有ボードに参加しました');
+  // 新しいボードを黙って作ると「登録したのに共有されない」事故になる。
+  // 初回だけ、家族の地図に参加する道を先に見せる。
+  // クラウド未接続(この端末のみ)のときは共有の話をしても意味がないので出さない
+  if (created && mode === 'cloud') $('#sheet-board').hidden = false;
   // 地点が一つもなければ現在地へ(許可されなければ既定表示のまま)
   setTimeout(() => {
     if (!initialViewDone && spots.length === 0) {

@@ -10,6 +10,7 @@ import {
 import * as localPhotos from './photos.js';
 
 const BOARD_KEY = 'tasobow.landhunter.board.v1';
+const CARRY_KEY = 'tasobow.landhunter.carry.v1';
 const HASH_PREFIX = '#b=';
 
 let mode = 'local'; // 'cloud' | 'local'
@@ -38,20 +39,34 @@ function newBoardId() {
   return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
+// URLに常にボードIDを残す。
+// 以前は見た目のために消していたが、そうするとブックマークや履歴から開いたURLに
+// IDが乗らず、localStorageが消えた端末で黙って別のボードが作られてしまう。
+// 「アドレスバーのURL = 招待リンク」にしておくのが一番事故が少ない。
+function keepHash(id) {
+  const want = `${location.pathname}${location.search}${HASH_PREFIX}${id}`;
+  if (location.pathname + location.search + location.hash !== want) {
+    history.replaceState(null, '', want);
+  }
+}
+
 // URLの招待リンク > 前回のボード > 新規作成 の優先順で決める
 function resolveBoardId() {
   const fromHash = location.hash.startsWith(HASH_PREFIX)
     ? location.hash.slice(HASH_PREFIX.length).trim() : '';
   if (fromHash && fromHash.length >= 20) {
     localStorage.setItem(BOARD_KEY, fromHash);
-    history.replaceState(null, '', location.pathname + location.search);
+    keepHash(fromHash);
     return { id: fromHash, joined: true };
   }
-  if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   const saved = localStorage.getItem(BOARD_KEY);
-  if (saved) return { id: saved, joined: false };
+  if (saved) {
+    keepHash(saved);
+    return { id: saved, joined: false };
+  }
   const created = newBoardId();
   localStorage.setItem(BOARD_KEY, created);
+  keepHash(created);
   return { id: created, joined: false, created: true };
 }
 
@@ -71,6 +86,8 @@ export async function initData({ onSpots, onNotice, onSyncStatus }) {
     mode = 'cloud';
     // この端末にだけある地点を初回に引き上げる(共有に切り替える前のデータ救済)
     await migrateLocalSpots();
+    const carried = await carryOverSpots().catch(() => 0);
+    if (carried && onNotice) onNotice(`この端末の${carried}件をこのボードに移しました`);
     sync.watchSpots(boardId, (cloudSpots, meta) => {
       const next = cloudSpots.filter(isValidSpot);
       status = { synced: !meta.fromCache, pending: meta.hasPendingWrites };
@@ -126,14 +143,35 @@ async function rescueLocalSpots() {
 }
 
 // 別のボード(共有ID)に切り替える。読み込み直して確実に初期化する。
-export function switchBoard(idOrUrl) {
+// carry=true なら、いまこの端末にある地点を切り替え先へ持ち込む。
+// (別ボードで貯めてしまった分を、正しいボードへ移すための道)
+export function switchBoard(idOrUrl, { carry = false } = {}) {
   const raw = String(idOrUrl).trim();
-  const id = raw.includes('#b=') ? raw.split('#b=')[1].trim() : raw;
+  const id = raw.includes(HASH_PREFIX) ? raw.split(HASH_PREFIX)[1].trim() : raw;
   if (!id || id.length < 20) return false;
+  if (carry && spots.length > 0) {
+    localStorage.setItem(CARRY_KEY, JSON.stringify(spots));
+  }
   localStorage.setItem(BOARD_KEY, id);
-  location.hash = '';
+  location.hash = HASH_PREFIX.slice(1) + id;
   location.reload();
   return true;
+}
+
+// 切り替え前の地点を新しいボードへ引き上げる。
+// idは元のまま送るので、二重に走っても上書きになるだけで増殖しない。
+async function carryOverSpots() {
+  const raw = localStorage.getItem(CARRY_KEY);
+  if (!raw) return 0;
+  let list = [];
+  try { list = JSON.parse(raw).filter(isValidSpot); } catch { list = []; }
+  if (list.length === 0) { localStorage.removeItem(CARRY_KEY); return 0; }
+  const ids = new Set(list.map((s) => s.id));
+  await Promise.all(list.map((s) => sync.putSpot(boardId, s)));
+  const photos = await localPhotos.getAllPhotos().catch(() => []);
+  await Promise.all(photos.filter((p) => ids.has(p.spotId)).map((p) => sync.putPhoto(boardId, p)));
+  localStorage.removeItem(CARRY_KEY);
+  return list.length;
 }
 
 // 未送信の書き込みがサーバーに届くまで待つ(共有前の取りこぼし確認に使う)

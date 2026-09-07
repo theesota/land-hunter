@@ -250,6 +250,21 @@ html, body {
   overflow-y: auto;
 }
 
+.diag-note {
+  margin: 6px 0 8px;
+}
+
+.carry-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: #555;
+}
+
+.diag-id { cursor: pointer; }
+
 .sheet-title {
   margin: 0 0 10px;
   font-size: 17px;

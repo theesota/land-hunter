@@ -140,11 +140,13 @@
         <span class="field-label">同期の状態</span>
         <div class="diag-row"><span>状態</span><b id="diag-state">-</b></div>
         <div class="diag-row"><span>地点数</span><b id="diag-count">-</b></div>
-        <div class="diag-row"><span>共有ID</span><b id="diag-board" class="diag-id">-</b></div>
+        <div class="diag-row"><span>共有ID</span><b id="diag-board" class="diag-id" title="タップでコピー">-</b></div>
+        <p class="note diag-note">3人とも同じ共有IDになっているか見比べてください。違っていれば、下に正しいIDを入れて参加します。</p>
         <form id="join-form" autocomplete="off" class="ref-search">
           <input type="text" id="join-input" placeholder="共有IDか招待リンクで参加">
           <button type="submit" class="ref-search-btn" aria-label="参加">→</button>
         </form>
+        <label class="carry-row"><input type="checkbox" id="join-carry" checked><span id="join-carry-label">この端末の地点も持ち込む</span></label>
       </div>
     </div>
   </section>
@@ -208,6 +210,19 @@
         <button type="submit" class="primary">保存</button>
       </div>
     </form>
+  </section>
+
+  <!-- 初めてこの端末で開いたとき(新しいボードを作ったとき)の案内 -->
+  <section id="sheet-board" class="sheet" hidden>
+    <h2 class="sheet-title">この端末用に新しい地図を作りました</h2>
+    <p class="note">すでに家族で使っている地図がある場合は、その招待リンク(または共有ID)を貼って参加してください。参加しないと、ここでの登録は他の人に見えません。</p>
+    <form id="board-join-form" autocomplete="off" class="ref-search">
+      <input type="text" id="board-join-input" placeholder="招待リンクを貼り付け">
+      <button type="submit" class="ref-search-btn" aria-label="参加">→</button>
+    </form>
+    <div class="sheet-actions">
+      <button type="button" id="btn-board-new" class="primary">新しい地図のまま使う</button>
+    </div>
   </section>
 
   <!-- 位置情報が許可されていないときの案内 -->
