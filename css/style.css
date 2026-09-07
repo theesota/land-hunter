@@ -304,6 +304,7 @@ html, body {
   line-height: 1.8;
 }
 .geo-steps li { margin-bottom: 2px; }
+.geo-diag { font-size: 11px; color: #999; }
 
 .sheet input[type="text"], .sheet textarea {
   width: 100%;

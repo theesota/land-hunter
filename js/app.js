@@ -77,18 +77,30 @@ $('#btn-camera').addEventListener('click', () => {
   $('#sheet-camera').hidden = false;
 });
 $('#btn-cam-close').addEventListener('click', () => { $('#sheet-camera').hidden = true; });
-$('#btn-cam-shoot').addEventListener('click', () => { $('#sheet-camera').hidden = true; $('#camera-input').click(); });
-$('#btn-cam-pick').addEventListener('click', () => { $('#sheet-camera').hidden = true; $('#library-input').click(); });
+// カメラを開く前(タップの中)で現在地の取得を始めておく。
+// Safariはタップ起点でないと許可ダイアログを出さないし、撮影中にGPSが落ち着く分だけ精度も上がる。
+let positionFix = null; // Promise<{lat,lng,error?}|null>
+$('#btn-cam-shoot').addEventListener('click', () => {
+  $('#sheet-camera').hidden = true;
+  positionFix = currentPositionOnce();
+  $('#camera-input').click();
+});
+$('#btn-cam-pick').addEventListener('click', () => {
+  $('#sheet-camera').hidden = true;
+  positionFix = currentPositionOnce();
+  $('#library-input').click();
+});
 
 // 現在地を一度だけ取る。追跡中なら追跡中の値をそのまま使う。
+// 失敗しても例外にせず {error} を返し、呼び出し側が拒否なら案内を出せるようにする。
 function currentPositionOnce() {
   if (mapView.currentLatLng) return Promise.resolve(mapView.currentLatLng);
-  if (!navigator.geolocation) return Promise.resolve(null);
+  if (!navigator.geolocation) return Promise.resolve({ error: { code: 0 } });
   return new Promise((resolve) => {
     navigator.geolocation.getCurrentPosition(
       (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
-      () => resolve(null),
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+      (err) => resolve({ error: err }),
+      { enableHighAccuracy: true, timeout: 25000, maximumAge: 30000 },
     );
   });
 }
@@ -108,7 +120,13 @@ async function registerFromPhotos(files, { fromCamera }) {
     }
   }
   if (!photos.length) return;
-  if (!latlng) latlng = await currentPositionOnce();
+  let geoError = null;
+  if (!latlng) {
+    const fix = await (positionFix || currentPositionOnce());
+    positionFix = null;
+    if (fix && fix.error) geoError = fix.error;
+    else if (fix) latlng = fix;
+  }
   stagedPhotos = photos;
   if (!latlng) {
     // 場所が決められない。写真は持ったまま、地図タップで指定してもらう
@@ -117,6 +135,8 @@ async function registerFromPhotos(files, { fromCamera }) {
       ? '現在地が取れませんでした。地図をタップして写真の場所を指定してください'
       : 'この写真には位置情報がありません。地図をタップして場所を指定してください';
     $('#pick-hint').hidden = false;
+    // 許可されていないのが原因なら、直し方も一緒に出す
+    if (geoError && (geoError.code === 1 || geoError.code === 0)) showGeoHelp(geoError);
     return;
   }
   mapView.focusSearchResult(latlng.lat, latlng.lng, '', { zoom: 17, marker: false });
@@ -548,6 +568,19 @@ function showGeoHelp(err) {
     ? 'https://theesota.github.io/land-hunter/ から開いてください。'
     : (showSteps ? fallback : '現在地が使えなくても、地図をタップすれば地点は登録できます。');
   $('#sheet-geo').hidden = false;
+  renderGeoDiag(code);
+}
+
+// 端末側の状態を1行にまとめる。Safariは許可状態を常に prompt と答えるので、参考値として扱う。
+async function renderGeoDiag(code) {
+  let perm = '不明';
+  try {
+    if (navigator.permissions && navigator.permissions.query) {
+      perm = (await navigator.permissions.query({ name: 'geolocation' })).state;
+    }
+  } catch { /* 未対応 */ }
+  const browser = isIOS() ? (isSafari() ? 'iOS Safari' : 'iOS 他ブラウザ') : (isAndroid() ? 'Android' : 'PC');
+  $('#geo-diag').textContent = `診断: 許可=${perm} / エラー=${code} / ${location.protocol === 'https:' ? 'https' : 'http'} / ${browser}`;
 }
 
 $('#btn-geo-close').addEventListener('click', () => { $('#sheet-geo').hidden = true; });
@@ -556,18 +589,9 @@ $('#btn-geo-retry').addEventListener('click', () => {
   startLocate();
 });
 
-async function startLocate() {
-  // 拒否済みならwatchPositionは即失敗する。先に案内を出したほうが速い。
-  if (navigator.permissions && navigator.permissions.query) {
-    try {
-      const st = await navigator.permissions.query({ name: 'geolocation' });
-      if (st.state === 'denied') {
-        $('#btn-locate').classList.remove('active');
-        showGeoHelp({ code: 1 });
-        return;
-      }
-    } catch { /* Permissions APIが無い端末は素通りしてよい */ }
-  }
+function startLocate() {
+  // Safariは「タップの中で」呼ばれた位置情報要求にしか許可ダイアログを出さない。
+  // だから何も待たずに同期で watchPosition を呼ぶ(Permissions API は診断用に裏で見るだけ)。
   clearTimeout(geoTimer);
   const on = mapView.toggleLocate((err) => {
     clearTimeout(geoTimer);
