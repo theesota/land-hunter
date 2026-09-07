@@ -93,11 +93,20 @@ export const SCHOOL_LAYERS = [
   { id: 'junior', label: '中学校区(伊勢崎市)', short: '中学校区', file: 'data/school/isesaki_junior.geojson', color: '#0e7490' },
 ];
 
-// 区域区分(市街化区域/市街化調整区域)。国土数値情報 都市地域データ(A09, 2018年度)の伊勢崎市分。
-// layer=1 市街化区域, layer=2 市街化調整区域。調整区域は原則として住宅を建てられない。
+// 都市計画の区域。国土数値情報 都市計画決定情報(A55, 2024年度)の伊勢崎市分(市が提出したデータ)。
+// zoning: layer=1 市街化区域, layer=2 市街化調整区域。調整区域は原則として住宅を建てられない。
+// youto : 用途地域(n=名称, c=コード, bcr=建ぺい率%, far=容積率%)。何が建てられるかの根拠。
+// tokutei: 特定用途制限地域(線引きしていない赤堀・東の区域での建築制限)。
+export const YOUTO_COLORS = {
+  1: '#9fd9a6', 2: '#c3e6b3', 3: '#b3e4cf', 4: '#d5efd5',
+  5: '#ffe89a', 6: '#ffd37f', 7: '#ffb86a',
+  9: '#ffb3c8', 10: '#ff8a8a', 11: '#cfa9d9', 12: '#a9c7e6', 13: '#86abd6',
+};
 export const ZONE_LAYERS = [
   { id: 'zoning', kind: 'zone', label: '市街化調整区域(伊勢崎市)', short: '調整区域', file: 'data/zone/isesaki_zoning.geojson', color: '#c2410c' },
+  { id: 'youto', kind: 'zone', label: '用途地域(伊勢崎市)', short: '用途地域', file: 'data/zone/isesaki_youto.geojson', color: '#6b7280', labelMinZoom: 15 },
 ];
+export const TOKUTEI_FILE = 'data/zone/isesaki_tokutei.geojson';
 
 // 周辺の売出し情報(公開APIが存在しないため、エリアの物件一覧ページへのリンクで代替)
 export const LISTINGS_LINK = {

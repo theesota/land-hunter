@@ -348,7 +348,7 @@ renderLayerChips();
     `<div class="legend-row"><i class="hz-swatch" style="background:rgb(${rgb})"></i><b>${label}</b><span>${note}</span></div>`);
   rows.push('<div class="legend-row legend-note">土砂災害: <i class="hz-swatch" style="background:#c1272d"></i>赤系=特別警戒区域(建築規制あり) / <i class="hz-swatch" style="background:#f5dc32"></i>黄系=警戒区域</div>');
   rows.push('<div class="legend-row legend-note">学区は令和5年度の国土数値情報。契約前は市の最新指定を確認。</div>');
-  rows.push('<div class="legend-row legend-note">調整区域(橙の斜線)は原則、住宅を建てられない。2018年度の国土数値情報なので市の都市計画図で最終確認。</div>');
+  rows.push('<div class="legend-row legend-note">調整区域(橙の破線)は原則、住宅を建てられない。用途地域の色は都市計画図に準拠、ラベルは「建ぺい率/容積率」。データは伊勢崎市提出の都市計画決定情報(2024年度)。契約前は市の最新の都市計画図で確認。</div>');
   $('#hazard-legend').innerHTML = rows.join('');
 }
 
@@ -681,6 +681,7 @@ for (const b of $('#spot-rating').children) {
 const INFO_ROWS = [
   ['address', '住所'],
   ['zone', '区域区分'],
+  ['youto', '用途地域'],
   ['school', '学区'],
   ['station', '最寄り駅'],
   ['facility', '周辺施設'],

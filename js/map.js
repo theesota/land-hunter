@@ -3,7 +3,7 @@
 
 import {
   BASE_MAPS, HAZARD_LAYERS, HAZARD_ATTRIBUTION, HAZARD_MAX_NATIVE_ZOOM,
-  SCHOOL_LAYERS, ZONE_LAYERS, DEFAULT_VIEW, DEFAULT_BASEMAP, statusById,
+  SCHOOL_LAYERS, ZONE_LAYERS, YOUTO_COLORS, DEFAULT_VIEW, DEFAULT_BASEMAP, statusById,
 } from './config.js';
 import { loadView, saveView, loadBasemap, saveBasemap } from './store.js';
 import { hazardHtml, carMinutes, landInfoRows } from './landinfo.js';
@@ -87,17 +87,26 @@ export class MapView {
       // 地図をタップして地点登録ができなくなる(校名はラベルで確認できる)。
       const polygons = L.geoJSON(geojson, {
         interactive: false,
-        // 区域区分は「調整区域」だけを目立たせる。市街化区域は境界線のみ薄く。
-        style: (feature) => (isZone
-          ? (feature.properties.layer === 2
-            ? { color: def.color, weight: 2, fillColor: def.color, fillOpacity: 0.10, dashArray: '6 4' }
-            : { color: def.color, weight: 1, fillOpacity: 0, dashArray: '2 4', opacity: 0.5 })
-          : { color: def.color, weight: 2, fillColor: def.color, fillOpacity: 0.06, dashArray: '4 3' }),
-        filter: (feature) => !isZone || feature.properties.layer === 1 || feature.properties.layer === 2,
+        style: (feature) => {
+          const pr = feature.properties;
+          // 用途地域は都市計画図と同じ色分けの塗り。境界線は細く
+          if (def.id === 'youto') {
+            const col = YOUTO_COLORS[pr.c] || '#ddd';
+            return { color: col, weight: 1, fillColor: col, fillOpacity: 0.35, opacity: 0.9 };
+          }
+          // 区域区分は「調整区域」だけを目立たせる。市街化区域は境界線のみ薄く。
+          if (isZone) {
+            return pr.layer === 2
+              ? { color: def.color, weight: 2, fillColor: def.color, fillOpacity: 0.10, dashArray: '6 4' }
+              : { color: def.color, weight: 1, fillOpacity: 0, dashArray: '2 4', opacity: 0.5 };
+          }
+          return { color: def.color, weight: 2, fillColor: def.color, fillOpacity: 0.06, dashArray: '4 3' };
+        },
         onEachFeature: (feature, l) => {
-          const text = isZone
-            ? (feature.properties.layer === 2 ? '市街化調整区域' : '')
-            : feature.properties.name;
+          const pr = feature.properties;
+          const text = def.id === 'youto' ? `${pr.n.replace(/地域$/, '')} ${pr.bcr}/${pr.far}`
+            : isZone ? (pr.layer === 2 ? '市街化調整区域' : '')
+              : pr.name;
           if (!text) return;
           // 面の中心にラベル。中心置きなら形が歪な区域でもエリア外に出にくい。
           labels.addLayer(L.marker(l.getBounds().getCenter(), {
@@ -111,7 +120,7 @@ export class MapView {
         },
         attribution: '<a href="https://nlftp.mlit.go.jp/ksj/" target="_blank">国土数値情報</a>',
       });
-      entry = { polygons, labels, visible: false };
+      entry = { polygons, labels, visible: false, labelMinZoom: def.labelMinZoom || 12 };
       this.schoolLayers.set(id, entry);
     }
     entry.visible = visible;
@@ -121,9 +130,9 @@ export class MapView {
   }
 
   _updateSchoolLabels() {
-    const zoomedIn = this.map.getZoom() >= 12;
+    const zoom = this.map.getZoom();
     for (const entry of this.schoolLayers.values()) {
-      if (entry.visible && zoomedIn) entry.labels.addTo(this.map);
+      if (entry.visible && zoom >= entry.labelMinZoom) entry.labels.addTo(this.map);
       else this.map.removeLayer(entry.labels);
     }
   }

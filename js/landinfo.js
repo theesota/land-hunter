@@ -3,7 +3,7 @@
 // ハザード(配信タイルの色を読んで浸水深等を判定)、最寄り駅(同梱駅データから直線距離)。
 // 全て並列で取りに行き、取れた項目から順に返す。
 
-import { HAZARD_LAYERS, SCHOOL_LAYERS, ZONE_LAYERS } from './config.js';
+import { HAZARD_LAYERS, SCHOOL_LAYERS, ZONE_LAYERS, TOKUTEI_FILE } from './config.js';
 
 // 洪水・津波・高潮の浸水深と色の対応。
 // 出典: 重ねるハザードマップ公式凡例(shinsui_legend3.png)から抽出し、実タイルの色と一致を確認済み。
@@ -110,16 +110,31 @@ export async function schoolsAt(lat, lng) {
 
 // 区域区分。市街化調整区域は原則として住宅が建てられないので、土地探しでは最初に見るべき情報。
 export async function zoneAt(lat, lng) {
-  for (const def of ZONE_LAYERS) {
-    try {
-      const gj = await getJson(def.file);
-      const hit = gj.features.find((f) => inFeature(lat, lng, f.geometry));
-      if (!hit) continue;
-      if (hit.properties.layer === 2) return '市街化調整区域';
-      if (hit.properties.layer === 1) return '市街化区域';
-    } catch { /* データ未整備エリアは黙ってスキップ */ }
-  }
-  return null; // 伊勢崎市外など、データの範囲外
+  const def = ZONE_LAYERS.find((d) => d.id === 'zoning');
+  try {
+    const gj = await getJson(def.file);
+    const hit = gj.features.find((f) => inFeature(lat, lng, f.geometry));
+    if (hit && hit.properties.layer === 2) return '市街化調整区域';
+    if (hit && hit.properties.layer === 1) return '市街化区域';
+  } catch { /* データ未整備エリアは黙ってスキップ */ }
+  return null; // 線引きしていない区域(赤堀・東)や市外
+}
+
+// 用途地域(建ぺい率/容積率つき)。線引き外なら特定用途制限地域を見る。
+export async function youtoAt(lat, lng) {
+  const def = ZONE_LAYERS.find((d) => d.id === 'youto');
+  try {
+    const gj = await getJson(def.file);
+    const hit = gj.features.find((f) => inFeature(lat, lng, f.geometry));
+    if (hit) {
+      const p = hit.properties;
+      return `${p.n}(建ぺい${p.bcr}%・容積${p.far}%)`;
+    }
+    const tk = await getJson(TOKUTEI_FILE);
+    const t = tk.features.find((f) => inFeature(lat, lng, f.geometry));
+    if (t) return `特定用途制限地域: ${t.properties.n}`;
+  } catch { /* 取れなければ出さない */ }
+  return null;
 }
 
 // ---- ハザード(タイルの色を読む) ----
@@ -286,6 +301,7 @@ export function collectLandInfo(lat, lng, onUpdate) {
     addressAt(lat, lng).then((v) => { if (v) info.address = v; }),
     schoolsAt(lat, lng).then((v) => { if (v.length) info.school = v.join(' / '); }),
     zoneAt(lat, lng).then((v) => { if (v) info.zone = v; }),
+    youtoAt(lat, lng).then((v) => { if (v) info.youto = v; }),
     hazardsAt(lat, lng).then((v) => {
       if (v !== null) {
         info.hz = v;
@@ -363,7 +379,7 @@ export function landInfoRows(info, { address, schoolKinds, roads, deal } = {}) {
   const rows = [];
   const addr = address || i.address;
   if (addr) rows.push(['pin', escapeText(addr)]);
-  if (i.zone) rows.push(['zone', zoneHtml(i.zone)]);
+  if (i.zone || i.youto) rows.push(['zone', [zoneHtml(i.zone), i.youto ? escapeText(i.youto) : ''].filter(Boolean).join('<br>')]);
   for (const r of dealLines(deal)) rows.push(r);
   const schools = schoolLines(i.school, schoolKinds);
   if (schools.length) rows.push(['school', schools.map(escapeText).join('<br>')]);
