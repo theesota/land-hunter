@@ -55,6 +55,13 @@ function resolveBoardId() {
   const fromHash = location.hash.startsWith(HASH_PREFIX)
     ? location.hash.slice(HASH_PREFIX.length).trim() : '';
   if (fromHash && fromHash.length >= 20) {
+    // 別ボードで使っていた端末が招待リンクを開いたとき、手元の地点をそのまま捨てない。
+    // 混ざったら消せばいいが、消えた地点は戻らないので「持ち込む」側に倒す。
+    const saved = localStorage.getItem(BOARD_KEY);
+    if (saved && saved !== fromHash) {
+      const local = loadLocalSpots();
+      if (local.length > 0) localStorage.setItem(CARRY_KEY, JSON.stringify(local));
+    }
     localStorage.setItem(BOARD_KEY, fromHash);
     keepHash(fromHash);
     return { id: fromHash, joined: true };
@@ -69,6 +76,13 @@ function resolveBoardId() {
   keepHash(created);
   return { id: created, joined: false, created: true };
 }
+
+// 開いているタブのアドレスバーに招待リンクを貼ると、ハッシュだけ変わって再読み込みされない。
+// ボードが変わるなら読み込み直して、通常の参加(持ち込み含む)と同じ道を通す。
+window.addEventListener('hashchange', () => {
+  const next = location.hash.startsWith(HASH_PREFIX) ? location.hash.slice(HASH_PREFIX.length).trim() : '';
+  if (next && next.length >= 20 && next !== boardId) location.reload();
+});
 
 // onSpots: 地点が変わるたびに呼ばれる(自分の編集でも他の人の編集でも)
 export async function initData({ onSpots, onNotice, onSyncStatus }) {
