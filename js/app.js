@@ -1,7 +1,7 @@
 // UIの結線。地点データの出し入れはすべてdata.js経由(クラウド同期/ローカルの違いを吸収)。
 
 import { HAZARD_LAYERS, SCHOOL_LAYERS, STATUSES, statusById, GEOCODER_URL, LISTINGS_LINK } from './config.js';
-import { collectLandInfo, hazardHtml, DEPTH_COLORS, searchStations } from './landinfo.js';
+import { collectLandInfo, hazardHtml, DEPTH_COLORS, searchStations, schoolLines, facilityLines } from './landinfo.js';
 import { createSpot, loadEnabledLayers, saveEnabledLayers } from './store.js';
 import {
   initData, getSpots, getMode, getInviteUrl, getBoardId, getStatus, flushPending, switchBoard,
@@ -95,7 +95,9 @@ const ALL_LAYERS = [
   ...SCHOOL_LAYERS.map((d) => ({ ...d, kind: 'school' })),
 ];
 
-let enabledIds = loadEnabledLayers() || ALL_LAYERS.map((d) => d.id);
+// 既定では中学校区を出さない(設定の「表示パネルに出す項目」で戻せる)
+let enabledIds = loadEnabledLayers() || ALL_LAYERS.filter((d) => d.id !== 'junior').map((d) => d.id);
+const schoolKindIds = () => enabledIds.filter((id) => SCHOOL_LAYERS.some((d) => d.id === id));
 const activeIds = new Set(HAZARD_LAYERS.filter((d) => d.defaultOn).map((d) => d.id));
 
 const BASEMAP_LABELS = { osm: '標準', pale: '淡色', photo: '航空写真' };
@@ -169,6 +171,11 @@ function renderEnabledToggles() {
       // 一覧から外した項目は地図からも消す
       if (!cb.checked && activeIds.has(def.id)) setLayerActive(def, false);
       renderLayerChips();
+      // 学区の表示種類はポップアップの学区行にも効かせる
+      if (def.kind === 'school') {
+        mapView.setSchoolKinds(schoolKindIds());
+        mapView.renderSpots(spots);
+      }
     });
     label.append(cb, ` ${def.label}`);
     box.append(label);
@@ -513,6 +520,10 @@ function renderLandInfo(info, loading) {
     let value;
     if (key === 'hazard' && info && (info.hz || info.hazard)) {
       value = hazardHtml(info);
+    } else if (key === 'school' && info && info.school) {
+      value = schoolLines(info.school, new Set(schoolKindIds())).join('<br>') || '-';
+    } else if (key === 'facility' && info && info.facility) {
+      value = facilityLines(info.facility).join('<br>');
     } else {
       value = info && info[key] ? info[key] : (loading ? '取得中…' : '-');
     }
@@ -540,6 +551,7 @@ async function openSpotSheet(spot) {
       if (pendingLatLng === target) {
         currentLandInfo = { ...info };
         renderLandInfo(currentLandInfo, false);
+        if (info.address && !$('#spot-address').value) $('#spot-address').value = info.address;
       }
     });
   }
@@ -547,6 +559,8 @@ async function openSpotSheet(spot) {
   $('#spot-name').value = spot ? spot.name : '';
   $('#spot-memo').value = spot ? spot.memo : '';
   $('#spot-url').value = spot && spot.url ? spot.url : '';
+  // 自動取得は町丁目まで。番地は歩いて見た表札や現地の看板から手で足す前提。
+  $('#spot-address').value = spot ? (spot.address || (spot.info && spot.info.address) || '') : '';
   setFormStatus(spot ? spot.status : STATUSES[0].id);
   setFormRating(spot ? spot.rating : 0);
   setFormRoads(spot ? spot.roads : []);
@@ -620,6 +634,7 @@ $('#spot-form').addEventListener('submit', async (e) => {
     rating: formRating,
     memo: $('#spot-memo').value.trim(),
     url: $('#spot-url').value.trim(),
+    address: $('#spot-address').value.trim(),
     roads: formRoads,
   };
   let savedId = id;
@@ -884,6 +899,8 @@ function showToast(msg) {
 }
 
 // ---- 起動 ----
+
+mapView.setSchoolKinds(schoolKindIds());
 
 function applySpots(next) {
   spots = next.filter((s) => !s.deletedAt);

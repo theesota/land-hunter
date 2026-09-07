@@ -6,7 +6,7 @@ import {
   SCHOOL_LAYERS, DEFAULT_VIEW, DEFAULT_BASEMAP, statusById,
 } from './config.js';
 import { loadView, saveView, loadBasemap, saveBasemap } from './store.js';
-import { hazardHtml, carMinutes } from './landinfo.js';
+import { hazardHtml, carMinutes, landInfoRows } from './landinfo.js';
 
 const ROAD_LABELS = { north: '北', east: '東', south: '南', west: '西' };
 
@@ -140,7 +140,11 @@ export class MapView {
 
   _upsertMarker(spot) {
     const existing = this.markers.get(spot.id);
-    if (existing) this.map.removeLayer(existing);
+    if (existing) {
+      // 開いたままのポップアップが古い内容で残らないよう、先に閉じてから外す
+      existing.closePopup();
+      this.map.removeLayer(existing);
+    }
 
     const color = statusById(spot.status).color;
     const icon = L.divIcon({
@@ -169,6 +173,11 @@ export class MapView {
     return `${dist}(${walk}車約${carMinutes(d)}分)`;
   }
 
+  // 設定で表示ONにしている学区の種類('elementary'/'junior')。ポップアップの学区行を絞る。
+  setSchoolKinds(ids) {
+    this.schoolKinds = new Set(ids);
+  }
+
   _popupHtml(spot) {
     const st = statusById(spot.status);
     const stars = spot.rating ? '★'.repeat(spot.rating) : '';
@@ -177,17 +186,9 @@ export class MapView {
     const streetview = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${spot.lat},${spot.lng}`;
     const hazard = `https://disaportal.gsi.go.jp/maps/index.html?ll=${spot.lat},${spot.lng}&z=16`;
     const memo = spot.memo ? `<p class="popup-memo">${escapeHtml(spot.memo)}</p>` : '';
-    const info = spot.info || {};
     const roads = (spot.roads || []).map((d) => ROAD_LABELS[d]).filter(Boolean);
-    const infoRows = [
-      info.address && `📍 ${escapeHtml(info.address)}`,
-      info.school && `🏫 ${escapeHtml(info.school)}`,
-      info.station && `🚉 ${escapeHtml(info.station)}`,
-      info.facility && `🛒 ${escapeHtml(info.facility)}`,
-      roads.length && `🛣 接道: ${roads.join('・')}側`,
-      (info.hz || info.hazard) && `<span class="popup-hz">${hazardHtml(info)}</span>`,
-    ].filter(Boolean);
-    const infoHtml = infoRows.length ? `<div class="popup-info">${infoRows.join('<br>')}</div>` : '';
+    const rowsHtml = landInfoRows(spot.info, { address: spot.address, schoolKinds: this.schoolKinds, roads });
+    const infoHtml = rowsHtml ? `<div class="popup-info">${rowsHtml}</div>` : '';
     // 基準地点(自宅・駅など)までの直線距離。基準地点自身のポップアップには出さない。
     const refs = (this.spots || []).filter((s) => s.status === 'reference' && s.id !== spot.id);
     const dists = spot.status !== 'reference' && refs.length

@@ -302,6 +302,39 @@ export function hazardHtml(info) {
   return info.hazard ? escapeText(info.hazard) : '-';
 }
 
+// 学区の文字列(「A小学校(徒歩約n分) / B中学校(徒歩約m分)」)を、表示ONの種類だけに絞る。
+// 種類は校名から判定するので、保存済みの古いデータもそのまま扱える。
+export function schoolLines(school, kinds) {
+  if (!school) return [];
+  return school.split(' / ').filter((t) => {
+    if (!kinds) return true;
+    return /中学校/.test(t) ? kinds.has('junior') : kinds.has('elementary');
+  });
+}
+
+export function facilityLines(facility) {
+  return facility ? facility.split(' / ') : [];
+}
+
+// 土地情報の行をアイコン付きで組む。ポップアップと登録シートで同じ見た目にする。
+// address: 手直しした住所があれば自動取得より優先する
+export function landInfoRows(info, { address, schoolKinds, roads } = {}) {
+  const i = info || {};
+  const rows = [];
+  const addr = address || i.address;
+  if (addr) rows.push(['pin', escapeText(addr)]);
+  const schools = schoolLines(i.school, schoolKinds);
+  if (schools.length) rows.push(['school', schools.map(escapeText).join('<br>')]);
+  if (i.station) rows.push(['train', escapeText(i.station)]);
+  const fac = facilityLines(i.facility);
+  if (fac.length) rows.push(['cart', fac.map(escapeText).join('<br>')]);
+  if (roads && roads.length) rows.push(['road', `接道: ${roads.map(escapeText).join('・')}側`]);
+  if (i.hz || i.hazard) rows.push(['wave', hazardHtml(i)]);
+  return rows.map(([ic, html]) => (
+    `<div class="pi-row"><svg class="icon pi-ic"><use href="#ic-${ic}"/></svg><span class="pi-text">${html}</span></div>`
+  )).join('');
+}
+
 function escapeText(str) {
   return String(str).replace(/[&<>"']/g, (ch) => ({
     '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
