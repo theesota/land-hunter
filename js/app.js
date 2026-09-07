@@ -9,6 +9,7 @@ import {
 } from './data.js';
 import { MapView } from './map.js';
 import { parseCoords, normalizeAddress } from './coords.js';
+import { readGps } from './exif.js';
 
 let spots = []; // 生きている地点(地図と一覧に出す)
 let trash = []; // ゴミ箱の地点(deletedAtあり)
@@ -27,6 +28,15 @@ const mapView = new MapView('map', {
     if (detailSpotId) { closeDetail(); return; }
     // 初回案内は読み終わる前に地図を触られることがある。邪魔せず引っ込める。
     $('#sheet-board').hidden = true;
+    if (photoPickMode) {
+      // 写真を持って場所待ちだったので、ここをその場所にして登録シートへ
+      photoPickMode = false;
+      $('#pick-hint').hidden = true;
+      pendingLatLng = latlng;
+      mapView.setPendingMarker(latlng);
+      openSpotSheet(null);
+      return;
+    }
     promptRegister(latlng, refPickMode ? `ここを「${refPickName}」にしますか?` : 'この場所を登録しますか?');
   },
   onMarkerSelect: (id) => {
@@ -51,6 +61,80 @@ function promptRegister(latlng, text) {
   $('#pick-hint').hidden = true; // 確認バーが出たら案内は引っ込める
   $('#confirm-bar').hidden = false;
 }
+
+// ---- カメラモード(写真から登録) ----
+// 写真 → 場所を決める → 登録シート(写真入り)。場所の決め方は3段構え:
+//   1. 写真のEXIFに位置情報があればそれ(ライブラリの写真)
+//   2. なければ今の現在地(カメラで撮った直後の想定。iOSは撮影写真に位置が付かない)
+//   3. どちらも無理なら地図をタップしてもらう(写真は持ったまま)
+
+let stagedPhotos = []; // 登録シートに最初から入れる写真
+let photoPickMode = false; // 写真を持ったまま、場所を地図タップで待っている
+
+$('#btn-camera').addEventListener('click', () => {
+  closePanels();
+  closeDetail();
+  $('#sheet-camera').hidden = false;
+});
+$('#btn-cam-close').addEventListener('click', () => { $('#sheet-camera').hidden = true; });
+$('#btn-cam-shoot').addEventListener('click', () => { $('#sheet-camera').hidden = true; $('#camera-input').click(); });
+$('#btn-cam-pick').addEventListener('click', () => { $('#sheet-camera').hidden = true; $('#library-input').click(); });
+
+// 現在地を一度だけ取る。追跡中なら追跡中の値をそのまま使う。
+function currentPositionOnce() {
+  if (mapView.currentLatLng) return Promise.resolve(mapView.currentLatLng);
+  if (!navigator.geolocation) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    navigator.geolocation.getCurrentPosition(
+      (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+      () => resolve(null),
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 },
+    );
+  });
+}
+
+async function registerFromPhotos(files, { fromCamera }) {
+  if (!files.length) return;
+  showToast('写真を読み込んでいます…');
+  let latlng = null;
+  const photos = [];
+  for (const file of files) {
+    // 圧縮するとEXIFが消えるので、位置は元ファイルから先に読む
+    if (!latlng) latlng = await readGps(file);
+    try {
+      photos.push({ id: null, dataUrl: await compressImage(file) });
+    } catch {
+      showToast('写真の読み込みに失敗しました');
+    }
+  }
+  if (!photos.length) return;
+  if (!latlng) latlng = await currentPositionOnce();
+  stagedPhotos = photos;
+  if (!latlng) {
+    // 場所が決められない。写真は持ったまま、地図タップで指定してもらう
+    photoPickMode = true;
+    $('#pick-hint-text').textContent = fromCamera
+      ? '現在地が取れませんでした。地図をタップして写真の場所を指定してください'
+      : 'この写真には位置情報がありません。地図をタップして場所を指定してください';
+    $('#pick-hint').hidden = false;
+    return;
+  }
+  mapView.focusSearchResult(latlng.lat, latlng.lng, '', { zoom: 17, marker: false });
+  pendingLatLng = latlng;
+  mapView.setPendingMarker(latlng);
+  openSpotSheet(null);
+}
+
+$('#camera-input').addEventListener('change', async (e) => {
+  const files = [...e.target.files];
+  e.target.value = '';
+  await registerFromPhotos(files, { fromCamera: true });
+});
+$('#library-input').addEventListener('change', async (e) => {
+  const files = [...e.target.files];
+  e.target.value = '';
+  await registerFromPhotos(files, { fromCamera: false });
+});
 
 // ---- 地点の詳細(ボトムシート) ----
 
@@ -357,6 +441,8 @@ $('#btn-confirm-cancel').addEventListener('click', () => {
 // 「地図で選ぶ」: 住所検索では出せないピンポイントな場所(駅の出口・実家など)を指定する
 function exitRefPick() {
   refPickMode = false;
+  photoPickMode = false;
+  stagedPhotos = [];
   pendingLatLng = null;
   $('#pick-hint').hidden = true;
   hideConfirmBar();
@@ -607,6 +693,8 @@ async function openSpotSheet(spot) {
       if (pendingLatLng === target) {
         currentLandInfo = { ...partial };
         renderLandInfo(currentLandInfo, true);
+        // 住所は最初に届くことが多いので、揃うのを待たずに欄へ入れる
+        if (partial.address && !$('#spot-address').value) $('#spot-address').value = partial.address;
       }
     }).then((info) => {
       if (pendingLatLng === target) {
@@ -626,7 +714,7 @@ async function openSpotSheet(spot) {
   setFormRating(spot ? spot.rating : 0);
   setFormRoads(spot ? spot.roads : []);
   removedPhotoIds = [];
-  formPhotos = spot ? await listPhotos(spot.id) : [];
+  formPhotos = spot ? await listPhotos(spot.id) : stagedPhotos.splice(0);
   renderPhotoThumbs();
   $('#btn-spot-delete').hidden = !spot;
   $('#sheet-spot').hidden = false;

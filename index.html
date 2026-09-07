@@ -75,8 +75,12 @@
 
   <!-- 地図上のフローティング操作 -->
   <div class="fab-stack">
+    <button id="btn-camera" class="fab fab-primary" title="写真から登録"><svg class="icon"><use href="#ic-camera"/></svg></button>
     <button id="btn-locate" class="fab" title="現在地"><svg class="icon"><use href="#ic-locate"/></svg></button>
   </div>
+  <!-- カメラモード用の入力。capture付きはカメラ直行、無しは写真ライブラリ -->
+  <input type="file" id="camera-input" accept="image/*" capture="environment" hidden>
+  <input type="file" id="library-input" accept="image/*" multiple hidden>
 
   <!-- 表示パネル(地図に重なるので半透明・自動高さのコンパクトカード) -->
   <section id="panel-layers" class="panel-compact" hidden>
@@ -161,6 +165,18 @@
         </form>
         <label class="carry-row"><input type="checkbox" id="join-carry" checked><span id="join-carry-label">この端末の地点も持ち込む</span></label>
       </div>
+    </div>
+  </section>
+
+  <!-- 写真から登録: 撮るか、撮ってある写真を選ぶか -->
+  <section id="sheet-camera" class="sheet" hidden>
+    <h2 class="sheet-title">写真から登録</h2>
+    <p class="note">撮った写真の場所にピンを立てて、土地情報を自動で入れます。</p>
+    <button type="button" id="btn-cam-shoot" class="wide-btn">カメラで撮る(今いる場所に登録)</button>
+    <button type="button" id="btn-cam-pick" class="wide-btn ghost">撮ってある写真を選ぶ(写真の位置情報を使う)</button>
+    <p class="note">iPhoneでは、カメラで撮った写真に位置情報が付かないため、撮った時点の現在地を使います。</p>
+    <div class="sheet-actions">
+      <button type="button" id="btn-cam-close" class="ghost">閉じる</button>
     </div>
   </section>
 
