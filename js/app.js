@@ -8,6 +8,7 @@ import {
   saveSpot, deleteSpot, restoreSpot, purgeSpot, listPhotos, addPhoto, deletePhoto, compressImage,
 } from './data.js';
 import { MapView } from './map.js';
+import { parseCoords, normalizeAddress } from './coords.js';
 
 let spots = []; // 生きている地点(地図と一覧に出す)
 let trash = []; // ゴミ箱の地点(deletedAtあり)
@@ -26,13 +27,7 @@ const mapView = new MapView('map', {
     if (detailSpotId) { closeDetail(); return; }
     // 初回案内は読み終わる前に地図を触られることがある。邪魔せず引っ込める。
     $('#sheet-board').hidden = true;
-    closePanels();
-    pendingLatLng = latlng;
-    mapView.setPendingMarker(latlng);
-    $('#confirm-text').textContent = refPickMode ? `ここを「${refPickName}」にしますか?` : 'この場所を登録しますか?';
-    $('#btn-confirm-add').textContent = refPickMode ? 'ここにする' : '登録する';
-    $('#pick-hint').hidden = true; // 確認バーが出たら案内は引っ込める
-    $('#confirm-bar').hidden = false;
+    promptRegister(latlng, refPickMode ? `ここを「${refPickName}」にしますか?` : 'この場所を登録しますか?');
   },
   onMarkerSelect: (id) => {
     const spot = spots.find((s) => s.id === id);
@@ -41,16 +36,21 @@ const mapView = new MapView('map', {
   // 青い現在地マーカーをタップしたら、その場所をそのまま登録できる
   onLocationClick: (latlng) => {
     if (!$('#sheet-spot').hidden) return;
-    closePanels();
-    pendingLatLng = latlng;
-    mapView.setPendingMarker(latlng);
-    $('#confirm-text').textContent = refPickMode
-      ? `現在地を「${refPickName}」にしますか?` : '現在地を登録しますか?';
-    $('#btn-confirm-add').textContent = refPickMode ? 'ここにする' : '登録する';
-    $('#pick-hint').hidden = true;
-    $('#confirm-bar').hidden = false;
+    promptRegister(latlng, refPickMode ? `現在地を「${refPickName}」にしますか?` : '現在地を登録しますか?');
   },
 });
+
+// 仮ピンを置いて画面下の確認バーを出す。地図タップ・現在地・検索結果の3経路で共通。
+function promptRegister(latlng, text) {
+  closePanels();
+  closeDetail();
+  pendingLatLng = latlng;
+  mapView.setPendingMarker(latlng);
+  $('#confirm-text').textContent = text;
+  $('#btn-confirm-add').textContent = refPickMode ? 'ここにする' : '登録する';
+  $('#pick-hint').hidden = true; // 確認バーが出たら案内は引っ込める
+  $('#confirm-bar').hidden = false;
+}
 
 // ---- 地点の詳細(ボトムシート) ----
 
@@ -250,15 +250,23 @@ renderLayerChips();
 
 // 駅名(同梱データ)と住所(国土地理院)をまとめて引く。
 // 「本庄駅」のようなピンポイント指定は住所検索だけでは市までしか返らないため。
+// exact=true は「その場所そのもの」を指す結果(緯度経度、番地まで一致した住所)。
+// 選んだらそのまま登録確認に進める。町名レベルの結果は地図を寄せるだけ。
 async function searchPlaces(query) {
+  const coords = parseCoords(query);
+  if (coords) {
+    return [{ title: `緯度経度 ${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}`, lat: coords.lat, lng: coords.lng, exact: true }];
+  }
+  const q = normalizeAddress(query);
   const [stations, geo] = await Promise.all([
-    searchStations(query).catch(() => []),
-    fetch(GEOCODER_URL + encodeURIComponent(query)).then((r) => r.json()).catch(() => []),
+    searchStations(q).catch(() => []),
+    fetch(GEOCODER_URL + encodeURIComponent(q)).then((r) => r.json()).catch(() => []),
   ]);
   const geoItems = (Array.isArray(geo) ? geo : []).map((f) => ({
     title: f.properties.title,
     lat: f.geometry.coordinates[1],
     lng: f.geometry.coordinates[0],
+    exact: /番地|番|号/.test(f.properties.title),
   }));
   return [...stations, ...geoItems].slice(0, 8);
 }
@@ -292,9 +300,16 @@ function renderSearchResults(places) {
     const li = document.createElement('li');
     li.textContent = place.title;
     li.addEventListener('click', () => {
-      mapView.focusSearchResult(place.lat, place.lng, place.title);
       hideSearchResults();
       $('#search-input').blur();
+      if (place.exact) {
+        // ピンポイントの結果は、そのまま登録できるところまで持っていく
+        mapView.focusSearchResult(place.lat, place.lng, place.title, { zoom: 17, marker: false });
+        promptRegister({ lat: place.lat, lng: place.lng }, refPickMode
+          ? `ここを「${refPickName}」にしますか?` : `${place.title}\nこの場所を登録しますか?`);
+      } else {
+        mapView.focusSearchResult(place.lat, place.lng, place.title);
+      }
     });
     searchResultsEl.append(li);
   }

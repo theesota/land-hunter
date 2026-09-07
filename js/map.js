@@ -242,9 +242,11 @@ export class MapView {
   }
 
   // 検索結果へ移動。一時マーカーを置いて場所を分かりやすくする(次の検索で消える)。
-  focusSearchResult(lat, lng, title) {
-    this.map.setView([lat, lng], Math.max(this.map.getZoom(), 15));
+  focusSearchResult(lat, lng, title, { zoom = 15, marker = true } = {}) {
+    this.map.setView([lat, lng], Math.max(this.map.getZoom(), zoom));
     if (this.searchMarker) this.map.removeLayer(this.searchMarker);
+    this.searchMarker = null;
+    if (!marker) return;
     this.searchMarker = L.circleMarker([lat, lng], {
       radius: 9, color: '#c93b3b', weight: 2.5, fillColor: '#fff', fillOpacity: 0.9,
     }).addTo(this.map).bindPopup(title).openPopup();

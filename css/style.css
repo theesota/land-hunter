@@ -565,6 +565,7 @@ html, body {
 /* ---- 登録確認ポップアップ / 土地情報 ---- */
 
 /* タップした場所の登録確認バー(地図の上に重ならない位置に出す) */
+.confirm-bar #confirm-text { white-space: pre-line; }
 .confirm-bar {
   position: fixed;
   left: 12px;
