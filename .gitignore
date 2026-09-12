@@ -3,3 +3,7 @@ firebase-debug.log
 firestore-debug.log
 .firebase/
 node_modules/
+emu.log
+tests/node_modules/
+tests/*.png
+tests/*.log
