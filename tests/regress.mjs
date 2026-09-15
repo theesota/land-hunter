@@ -70,7 +70,7 @@ await page.click('#panel-list .page-back');
 // ポップアップの中身
 await page.evaluate(() => {
   const pins = [...document.querySelectorAll('.spot-pin')];
-  const vis = pins.find((el) => { const r = el.getBoundingClientRect(); return r.top > 200 && r.top < 700; });
+  const vis = pins.find((el) => { const r = el.getBoundingClientRect(); return r.top > 60 && r.top < 700; });
   vis.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 });
 await page.waitForSelector('.popup-info');

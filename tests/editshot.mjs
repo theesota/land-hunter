@@ -1,0 +1,24 @@
+import { chromium } from 'playwright';
+const fails = [];
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
+const page = await (await b.newContext({ viewport: { width: 390, height: 780 }, deviceScaleFactor: 2 })).newPage();
+page.on('pageerror', (e) => fails.push('pageerror: ' + e.message));
+await page.route('**/*', (r) => (/localhost|127\.0\.0\.1/.test(r.request().url()) ? r.continue() : r.abort()));
+await page.route('**/js/firebase-config.js', (r) => r.fulfill({ contentType: 'text/javascript', body: `export const FIREBASE_CONFIG={projectId:'__x__'};export function isConfigured(){return false;}` }));
+await page.addInitScript(() => localStorage.setItem('tasobow.landscout.view.v1', JSON.stringify({ lat: 36.3043, lng: 139.2117, zoom: 16 })));
+await page.goto('http://localhost:8776/index.html', { waitUntil: 'domcontentloaded' });
+await page.waitForSelector('#btn-camera');
+// 画面のかなり下をタップして登録 → シートが開いてもピンが見える位置に地図が寄るか
+await page.mouse.click(300, 700);
+await page.waitForSelector('#confirm-bar:not([hidden])');
+await page.click('#btn-confirm-add');
+await page.waitForSelector('#sheet-spot:not([hidden])');
+await page.waitForTimeout(900);
+const pin = await page.$eval('.pending-pin', (e) => e.getBoundingClientRect());
+const sheet = await page.$eval('#sheet-spot', (e) => e.getBoundingClientRect());
+console.log('pin bottom', Math.round(pin.bottom), '/ sheet top', Math.round(sheet.top), '/ header 56');
+if (pin.bottom > sheet.top || pin.top < 56) fails.push('登録シートを開いたときにピンが隠れている');
+await page.screenshot({ path: 'edit_reveal.png' });
+await b.close();
+console.log(fails.length ? 'NG\n' + fails.join('\n') : 'OK');
+process.exit(fails.length ? 1 : 0);

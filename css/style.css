@@ -429,6 +429,9 @@ html, body {
 }
 .zone-warn { color: var(--danger); font-weight: 700; }
 
+/* 登録・編集シートは地図を上に4割残す。接道の方角をピンを見ながら選べるように */
+#sheet-spot { max-height: 60dvh; }
+
 .sheet-title {
   margin: 0 0 10px;
   font-size: 17px;

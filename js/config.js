@@ -77,7 +77,7 @@ export const HAZARD_MAX_NATIVE_ZOOM = 17;
 // 地点のステータス。順序はUIの表示順。
 export const STATUSES = [
   { id: 'interested', label: '気になる', color: '#2b6fd6' },
-  { id: 'visited', label: '見学済み', color: '#e08a00' },
+  { id: 'visited', label: '見学した', color: '#e08a00' },
   { id: 'candidate', label: '候補', color: '#1a9e50' },
   { id: 'rejected', label: '見送り', color: '#8a8a8a' },
   // 自宅・最寄り駅・職場など、候補地までの距離を測る起点。候補地のポップアップに距離が出る。
@@ -119,7 +119,7 @@ export const LISTINGS_LINK = {
 export const DEFAULT_BASEMAP = 'bright';
 
 // 反映確認用の版。deployのたびに日付+連番で上げる(設定の同期欄に出る)
-export const BUILD = '2026-09-16b';
+export const BUILD = '2026-09-16c';
 
 // 地域検索(国土地理院 住所検索API)。地名・駅名・施設名・住所を引ける。キー不要。
 export const GEOCODER_URL = 'https://msearch.gsi.go.jp/address-search/AddressSearch?q=';

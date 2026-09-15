@@ -798,6 +798,11 @@ async function openSpotSheet(spot) {
   renderPhotoThumbs();
   $('#btn-spot-delete').hidden = !spot;
   $('#sheet-spot').hidden = false;
+  // 接道の方角を選ぶときに、その土地のピンがシートの上の隙間に見えているようにする
+  const target = spot ? { lat: spot.lat, lng: spot.lng } : pendingLatLng;
+  if (target) {
+    requestAnimationFrame(() => mapView.revealAbove(target, $('#sheet-spot').getBoundingClientRect().height));
+  }
   $('#spot-name').focus();
 }
 
