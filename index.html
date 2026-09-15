@@ -7,7 +7,7 @@
   <title>とちげっちゅ</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hachi+Maru+Pop&family=Zen+Maru+Gothic:wght@500;700&display=swap">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.min.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -52,12 +52,12 @@
   <section id="page-menu" class="page" hidden>
     <div class="page-head">
       <button type="button" class="icon-btn page-back" aria-label="地図へ"><svg class="icon"><use href="#ic-back"/></svg></button>
-      <h2>めにゅー</h2>
+      <h2>メニュー</h2>
     </div>
     <div class="page-body menu-body">
-      <button type="button" id="btn-list" class="menu-item"><svg class="icon"><use href="#ic-list"/></svg><span>とち一覧</span><svg class="icon chev"><use href="#ic-chevron"/></svg></button>
-      <button type="button" id="btn-share" class="menu-item"><svg class="icon"><use href="#ic-share"/></svg><span>きょうゆう</span><svg class="icon chev"><use href="#ic-chevron"/></svg></button>
-      <button type="button" id="btn-settings" class="menu-item"><svg class="icon"><use href="#ic-gear"/></svg><span>せってい</span><svg class="icon chev"><use href="#ic-chevron"/></svg></button>
+      <button type="button" id="btn-list" class="menu-item"><svg class="icon"><use href="#ic-list"/></svg><span>土地一覧</span><svg class="icon chev"><use href="#ic-chevron"/></svg></button>
+      <button type="button" id="btn-share" class="menu-item"><svg class="icon"><use href="#ic-share"/></svg><span>共有</span><svg class="icon chev"><use href="#ic-chevron"/></svg></button>
+      <button type="button" id="btn-settings" class="menu-item"><svg class="icon"><use href="#ic-gear"/></svg><span>設定</span><svg class="icon chev"><use href="#ic-chevron"/></svg></button>
     </div>
   </section>
 
@@ -111,7 +111,7 @@
   <!-- 表示パネル(地図に重なるので半透明・自動高さのコンパクトカード) -->
   <section id="panel-layers" class="panel-compact" hidden>
     <div class="compact-head">
-      <span>ひょうじ</span>
+      <span>表示</span>
       <button class="icon-btn panel-close" aria-label="閉じる"><svg class="icon"><use href="#ic-close"/></svg></button>
     </div>
     <div class="chip-line" id="basemap-chips"></div>
@@ -122,11 +122,11 @@
     </details>
   </section>
 
-  <!-- とち一覧(1ページ) -->
+  <!-- 土地一覧(1ページ) -->
   <section id="panel-list" class="page" hidden>
     <div class="page-head">
       <button type="button" class="icon-btn page-back" aria-label="地図へ"><svg class="icon"><use href="#ic-back"/></svg></button>
-      <h2>とち一覧</h2>
+      <h2>土地一覧</h2>
     </div>
     <div class="page-body">
       <div id="sort-chips" class="chip-line sort-chips"></div>
@@ -142,11 +142,11 @@
     </div>
   </section>
 
-  <!-- きょうゆう(1ページ) -->
+  <!-- 共有(1ページ) -->
   <section id="panel-share" class="page" hidden>
     <div class="page-head">
       <button type="button" class="icon-btn page-back" aria-label="地図へ"><svg class="icon"><use href="#ic-back"/></svg></button>
-      <h2>きょうゆう</h2>
+      <h2>共有</h2>
     </div>
     <div class="page-body">
       <p class="note">リンクを送った相手と同じ地図になる。</p>
@@ -155,11 +155,11 @@
     </div>
   </section>
 
-  <!-- せってい(1ページ) -->
+  <!-- 設定(1ページ) -->
   <section id="panel-settings" class="page" hidden>
     <div class="page-head">
       <button type="button" class="icon-btn page-back" aria-label="地図へ"><svg class="icon"><use href="#ic-back"/></svg></button>
-      <h2>せってい</h2>
+      <h2>設定</h2>
     </div>
     <div class="page-body">
       <div class="field">

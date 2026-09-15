@@ -31,7 +31,7 @@ if (Math.abs(s.top - c.top) > 1 || Math.abs(s.width - c.width) > 1) fails.push('
 const cam = await page.$eval('#btn-camera', (e) => e.getBoundingClientRect());
 const loc = await page.$eval('#btn-locate', (e) => e.getBoundingClientRect());
 if (Math.abs(cam.width - loc.width) > 1) fails.push('カメラと現在地の大きさが違う');
-console.log('fab right gap', 390 - loc.right, 'bottom gap', 780 - loc.bottom);
+console.log('fab right gap', 390 - loc.right, 'bottom gap', 780 - loc.bottom); if (Math.abs(loc.width - s.width) > 1) fails.push('現在地と検索の大きさが違う');
 
 // メニュー
 await page.click('#btn-menu');
@@ -67,7 +67,7 @@ await page.waitForTimeout(300);
 names = await page.$$eval('#spot-list .land-name', (els) => els.map((e) => e.textContent));
 const active = await page.$eval('#sort-chips .mini-chip.active', (e) => e.textContent);
 console.log('ドラッグ後:', names, '/ 並び:', active);
-if (active !== 'じぶん') fails.push('ドラッグ後に「じぶん」順に切り替わらない');
+if (active !== '手動') fails.push('ドラッグ後に「手動」順に切り替わらない');
 const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('tasobow.landscout.spots.v1')).filter((s) => s.status !== 'reference').map((s) => [s.name, s.order]));
 console.log('order:', saved);
 // 再描画しても順が保たれる

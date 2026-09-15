@@ -55,13 +55,14 @@ html, body {
   z-index: 1000;
 }
 
+/* タイトルは丸ゴシックの太字。手書き風は読みづらいのでやめた */
 .topbar h1 {
   flex: 1;
-  font-family: "Hachi Maru Pop", "Zen Maru Gothic", sans-serif;
-  font-size: 21px;
+  font-family: "Zen Maru Gothic", sans-serif;
+  font-size: 20px;
   margin: 0 0 0 4px;
-  font-weight: 400;
-  letter-spacing: 0.04em;
+  font-weight: 900;
+  letter-spacing: 0.06em;
 }
 .topbar-actions { display: flex; gap: 4px; }
 
@@ -115,8 +116,8 @@ html, body {
 
 /* 普段は虫眼鏡の丸ボタンだけ(右下のFABと同じ白丸) */
 .search-open {
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: none;
   background: #fff;
@@ -140,6 +141,7 @@ html, body {
   cursor: pointer;
 }
 .search-close .icon { width: 18px; height: 18px; }
+.search-open .icon { width: 22px; height: 22px; }
 .searchbar input {
   flex: 1;
   border: none;
@@ -181,8 +183,8 @@ html, body {
 }
 
 .fab {
-  width: 54px;
-  height: 54px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: none;
   background: #fff;
@@ -193,10 +195,10 @@ html, body {
   align-items: center;
   justify-content: center;
 }
-.fab .icon { width: 24px; height: 24px; }
+.fab .icon { width: 22px; height: 22px; }
 
 .fab-primary { background: var(--brand); color: #fff; }
-.fab-primary .icon { width: 24px; height: 24px; }
+.fab-primary .icon { width: 22px; height: 22px; }
 .fab.active { outline: 3px solid #ffb43a; }
 
 /* ---- パネル ---- */
@@ -262,9 +264,8 @@ html, body {
 }
 .page-head h2 {
   margin: 0;
-  font-family: "Hachi Maru Pop", "Zen Maru Gothic", sans-serif;
-  font-size: 19px;
-  font-weight: 400;
+  font-size: 17px;
+  font-weight: 700;
 }
 .page-head .icon-btn { color: #fff; }
 .page-body { flex: 1; overflow-y: auto; padding: 12px 14px calc(24px + env(safe-area-inset-bottom, 0px)); }
@@ -851,8 +852,8 @@ html, body {
   position: fixed;
   top: 66px;
   right: 12px;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   z-index: 900;
   filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.3));
 }

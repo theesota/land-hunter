@@ -262,7 +262,7 @@ let enabledIds = loadEnabledLayers() || ALL_LAYERS.filter((d) => d.id !== 'junio
 const schoolKindIds = () => enabledIds.filter((id) => SCHOOL_LAYERS.some((d) => d.id === id));
 const activeIds = new Set(HAZARD_LAYERS.filter((d) => d.defaultOn).map((d) => d.id));
 
-const BASEMAP_LABELS = { bright: '地図', pale: 'うすい', photo: '写真' };
+const BASEMAP_LABELS = { bright: '地図', pale: '淡色', photo: '写真' };
 
 function renderBasemapChips() {
   const box = $('#basemap-chips');
@@ -359,8 +359,7 @@ renderLayerChips();
   const rows = DEPTH_COLORS.map(({ rgb, label, note }) =>
     `<div class="legend-row"><i class="hz-swatch" style="background:rgb(${rgb})"></i><b>${label}</b><span>${note}</span></div>`);
   rows.push('<div class="legend-row legend-note">土砂災害: <i class="hz-swatch" style="background:#c1272d"></i>赤系=特別警戒区域(建築規制あり) / <i class="hz-swatch" style="background:#f5dc32"></i>黄系=警戒区域</div>');
-  rows.push('<div class="legend-row legend-note">学区は令和5年度の国土数値情報。契約前は市の最新指定を確認。</div>');
-  rows.push('<div class="legend-row legend-note">調整区域(橙の破線)は原則、住宅を建てられない。用途地域の色は都市計画図に準拠、ラベルは「建ぺい率/容積率」。データは伊勢崎市提出の都市計画決定情報(2024年度)。契約前は市の最新の都市計画図で確認。</div>');
+
   $('#hazard-legend').innerHTML = rows.join('');
 }
 
@@ -974,9 +973,9 @@ $('#btn-spot-delete').addEventListener('click', async () => {
 
 // ---- 地点一覧 ----
 
-// 並び: ★(既定)・価格・広さ・坪単価・新しい順・じぶん(ドラッグで決めた順)
+// 並び: ★(既定)・価格・広さ・坪単価・新しい順・手動(ドラッグで決めた順)
 const SORTS = [
-  ['star', '★'], ['price', '価格'], ['area', '広さ'], ['unit', '坪単価'], ['new', '新しい'], ['manual', 'じぶん'],
+  ['star', '★'], ['price', '価格'], ['area', '広さ'], ['unit', '坪単価'], ['new', '新しい'], ['manual', '手動'],
 ];
 let sortKey = loadSort();
 
@@ -1048,7 +1047,7 @@ function renderList() {
   renderTrash();
 }
 
-// ドラッグで並べ替え。つまみ(⋮⋮)だけを掴む。指を離したら order を保存して「じぶん」順に切り替える。
+// ドラッグで並べ替え。つまみ(⋮⋮)だけを掴む。指を離したら order を保存して「手動」順に切り替える。
 // HTML5のドラッグはiOS Safariで効かないので pointer イベントで自前で動かす。
 function enableDrag(ul) {
   let dragging = null;
@@ -1107,7 +1106,7 @@ async function persistOrder(ul) {
   try {
     await Promise.all(changed.map((s) => saveSpot(s)));
   } catch {
-    showToast('並びを保存できなかった');
+    showToast('並びを保存できず');
   }
 }
 
