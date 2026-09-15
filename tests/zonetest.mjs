@@ -71,6 +71,7 @@ if ((await page.inputValue('#spot-area')) !== '60' || (await page.inputValue('#s
 
 // 市街地(伊勢崎駅) → 市街化区域
 await page.click('#btn-spot-cancel');
+await page.click('#btn-search-open');
 await page.fill('#search-input', '36.3165, 139.1967');
 await page.press('#search-input', 'Enter');
 await page.waitForSelector('#search-results li');

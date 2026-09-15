@@ -43,11 +43,15 @@
     </div>
   </header>
 
-  <!-- 地域検索 -->
-  <div class="searchbar">
+  <!-- 地域検索。普段は虫眼鏡ボタンだけ。押したときだけ入力欄を出す -->
+  <div class="searchbar collapsed" id="searchbar">
+    <button type="button" id="btn-search-open" class="search-open" aria-label="検索">
+      <svg class="icon"><use href="#ic-search"/></svg>
+    </button>
     <form id="search-form" autocomplete="off">
       <svg class="icon search-icon"><use href="#ic-search"/></svg>
       <input type="search" id="search-input" placeholder="住所・駅名・緯度経度で検索" enterkeyhint="search">
+      <button type="button" id="btn-search-close" class="search-close" aria-label="検索を閉じる"><svg class="icon"><use href="#ic-close"/></svg></button>
     </form>
     <ul id="search-results" hidden></ul>
   </div>
@@ -301,9 +305,13 @@
     </div>
   </section>
 
-  <!-- 写真の拡大表示 -->
+  <!-- 写真の拡大表示。横スワイプで次の写真(scroll-snap) -->
   <div id="photo-viewer" class="photo-viewer" hidden>
-    <img id="photo-viewer-img" alt="写真">
+    <div id="pv-track" class="pv-track"></div>
+    <div id="pv-count" class="pv-count"></div>
+    <button type="button" id="pv-close" class="pv-close" aria-label="閉じる"><svg class="icon"><use href="#ic-close"/></svg></button>
+    <button type="button" id="pv-prev" class="pv-nav pv-prev" aria-label="前の写真">‹</button>
+    <button type="button" id="pv-next" class="pv-nav pv-next" aria-label="次の写真">›</button>
   </div>
 
   <div id="toast" class="toast" hidden></div>

@@ -26,6 +26,8 @@ const mapView = new MapView('map', {
     if (!$('#sheet-spot').hidden || !$('#sheet-geo').hidden) return;
     // 詳細を見ている最中の地図タップは「閉じる」。いきなり登録確認を出さない
     if (detailSpotId) { closeDetail(); return; }
+    // 検索欄を閉じるための地図タップも同じ。登録確認は出さない
+    if (Date.now() - searchClosedByMapAt < 700) return;
     // 初回案内は読み終わる前に地図を触られることがある。邪魔せず引っ込める。
     $('#sheet-board').hidden = true;
     if (photoPickMode) {
@@ -178,14 +180,20 @@ async function openDetail(spot) {
   const box = body.querySelector('.popup-photos');
   const photos = await listPhotos(spot.id);
   if (detailSpotId !== spot.id || !box) return;
+  renderDetailPhotos(box, photos, spot.name);
+}
+
+// 詳細シートのサムネ列。タップでその写真からスライド表示を開く
+function renderDetailPhotos(box, photos, alt = '') {
   box.innerHTML = '';
-  for (const photo of photos) {
+  const urls = photos.map((p) => p.dataUrl);
+  urls.forEach((url, i) => {
     const img = document.createElement('img');
-    img.src = photo.dataUrl;
-    img.alt = spot.name;
-    img.addEventListener('click', () => openPhotoViewer(photo.dataUrl));
+    img.src = url;
+    img.alt = alt;
+    img.addEventListener('click', () => openPhotoViewer(urls, i));
     box.append(img);
-  }
+  });
 }
 
 function bindDetailEdit(spot) {
@@ -194,13 +202,7 @@ function bindDetailEdit(spot) {
   listPhotos(spot.id).then((photos) => {
     const box = $('#detail-body').querySelector('.popup-photos');
     if (!box || detailSpotId !== spot.id) return;
-    box.innerHTML = '';
-    for (const photo of photos) {
-      const img = document.createElement('img');
-      img.src = photo.dataUrl;
-      img.addEventListener('click', () => openPhotoViewer(photo.dataUrl));
-      box.append(img);
-    }
+    renderDetailPhotos(box, photos, spot.name);
   });
 }
 
@@ -378,11 +380,32 @@ async function searchPlaces(query) {
 }
 
 const searchResultsEl = $('#search-results');
+const searchbarEl = $('#searchbar');
 
 function hideSearchResults() {
   searchResultsEl.hidden = true;
   searchResultsEl.innerHTML = '';
 }
+
+// 普段は虫眼鏡ボタンだけ。押したら入力欄を出す。
+// iOS Safariはタップ処理の同期部分でfocusしないとキーボードが出ないので、ここで即focusする
+function openSearch() {
+  searchbarEl.classList.remove('collapsed');
+  $('#search-input').focus();
+}
+
+function closeSearch() {
+  hideSearchResults();
+  $('#search-input').value = '';
+  $('#search-input').blur();
+  searchbarEl.classList.add('collapsed');
+}
+
+$('#btn-search-open').addEventListener('click', openSearch);
+$('#btn-search-close').addEventListener('click', closeSearch);
+$('#search-input').addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeSearch();
+});
 
 $('#search-form').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -406,8 +429,7 @@ function renderSearchResults(places) {
     const li = document.createElement('li');
     li.textContent = place.title;
     li.addEventListener('click', () => {
-      hideSearchResults();
-      $('#search-input').blur();
+      closeSearch();
       if (place.exact) {
         // ピンポイントの結果は、そのまま登録できるところまで持っていく
         mapView.focusSearchResult(place.lat, place.lng, place.title, { zoom: 17, marker: false });
@@ -422,8 +444,15 @@ function renderSearchResults(places) {
   searchResultsEl.hidden = false;
 }
 
-// 地図を触ったら結果リストを閉じる
-$('#map').addEventListener('pointerdown', hideSearchResults);
+// 地図を触ったら検索ごと閉じる(虫眼鏡ボタンに戻す)。
+// そのタップで登録確認まで出ると邪魔なので、直後の地図クリックは onMapClick 側で無視する
+// (時刻で持つのは、ドラッグだとclickが来ずフラグが残り、次の正当なタップを潰すため)
+let searchClosedByMapAt = 0;
+$('#map').addEventListener('pointerdown', () => {
+  if (searchbarEl.classList.contains('collapsed')) return;
+  closeSearch();
+  searchClosedByMapAt = Date.now();
+});
 
 // ---- 登録確認バー ----
 
@@ -771,7 +800,7 @@ function renderPhotoThumbs() {
     wrap.className = 'photo-thumb';
     const img = document.createElement('img');
     img.src = photo.dataUrl;
-    img.addEventListener('click', () => openPhotoViewer(photo.dataUrl));
+    img.addEventListener('click', () => openPhotoViewer(formPhotos.map((p) => p.dataUrl), i));
     const del = document.createElement('button');
     del.type = 'button';
     del.className = 'photo-del';
@@ -801,13 +830,74 @@ for (const input of document.querySelectorAll('.photo-input')) {
   });
 }
 
-function openPhotoViewer(dataUrl) {
-  $('#photo-viewer-img').src = dataUrl;
-  $('#photo-viewer').hidden = false;
+// ---- 写真のスライド表示 ----
+// 横スワイプはCSSのscroll-snapに任せる(ライブラリ不要、iOS Safariの慣性スクロールがそのまま効く)。
+// JSがやるのは「開いた写真の位置に合わせる」「何枚目か数える」「閉じる/PC用の矢印」だけ。
+
+const pvTrack = $('#pv-track');
+
+function pvIndex() {
+  const w = pvTrack.clientWidth || 1;
+  return Math.round(pvTrack.scrollLeft / w);
 }
 
-$('#photo-viewer').addEventListener('click', () => {
+function pvUpdate() {
+  const total = pvTrack.children.length;
+  const i = Math.min(pvIndex(), total - 1);
+  $('#pv-count').textContent = total > 1 ? `${i + 1} / ${total}` : '';
+  $('#pv-prev').hidden = total <= 1 || i <= 0;
+  $('#pv-next').hidden = total <= 1 || i >= total - 1;
+}
+
+function pvGo(i) {
+  const total = pvTrack.children.length;
+  const to = Math.max(0, Math.min(total - 1, i));
+  pvTrack.scrollTo({ left: to * pvTrack.clientWidth, behavior: 'smooth' });
+}
+
+function openPhotoViewer(urls, startIndex = 0) {
+  const list = Array.isArray(urls) ? urls : [urls];
+  pvTrack.innerHTML = '';
+  for (const url of list) {
+    const slide = document.createElement('div');
+    slide.className = 'pv-slide';
+    const img = document.createElement('img');
+    img.src = url;
+    img.alt = '写真';
+    img.draggable = false;
+    slide.append(img);
+    pvTrack.append(slide);
+  }
+  $('#photo-viewer').hidden = false;
+  // 表示してから幅が決まるので、その後で開いた写真の位置へ瞬時に移す
+  pvTrack.scrollTo({ left: startIndex * pvTrack.clientWidth, behavior: 'instant' });
+  pvUpdate();
+}
+
+function closePhotoViewer() {
   $('#photo-viewer').hidden = true;
+  pvTrack.innerHTML = '';
+}
+
+pvTrack.addEventListener('scroll', pvUpdate, { passive: true });
+// 写真の外(黒い余白)をタップで閉じる。スワイプはclickにならないので誤って閉じない
+pvTrack.addEventListener('click', (e) => {
+  if (e.target === pvTrack || e.target.classList.contains('pv-slide')) closePhotoViewer();
+});
+$('#pv-close').addEventListener('click', closePhotoViewer);
+$('#pv-prev').addEventListener('click', () => pvGo(pvIndex() - 1));
+$('#pv-next').addEventListener('click', () => pvGo(pvIndex() + 1));
+document.addEventListener('keydown', (e) => {
+  if ($('#photo-viewer').hidden) return;
+  if (e.key === 'Escape') closePhotoViewer();
+  if (e.key === 'ArrowLeft') pvGo(pvIndex() - 1);
+  if (e.key === 'ArrowRight') pvGo(pvIndex() + 1);
+});
+// 画面の向きが変わったら今の写真に合わせ直す(幅が変わると半端な位置で止まるため)
+window.addEventListener('resize', () => {
+  if ($('#photo-viewer').hidden) return;
+  const i = pvIndex();
+  requestAnimationFrame(() => pvTrack.scrollTo({ left: i * pvTrack.clientWidth, behavior: 'instant' }));
 });
 
 function closeSpotSheet() {

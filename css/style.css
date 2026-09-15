@@ -103,6 +103,34 @@ html, body {
   box-shadow: var(--shadow);
 }
 .searchbar .search-icon { color: #888; width: 18px; height: 18px; }
+
+/* 普段は虫眼鏡の丸ボタンだけ(右下のFABと同じ白丸) */
+.search-open {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: #fff;
+  color: #444;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+.searchbar:not(.collapsed) .search-open { display: none; }
+.searchbar.collapsed { width: auto; }
+.searchbar.collapsed form,
+.searchbar.collapsed #search-results { display: none; }
+.search-close {
+  border: none;
+  background: transparent;
+  color: #888;
+  padding: 0;
+  display: flex;
+  cursor: pointer;
+}
+.search-close .icon { width: 18px; height: 18px; }
 .searchbar input {
   flex: 1;
   border: none;
@@ -501,17 +529,84 @@ html, body {
 .photo-viewer {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.9);
+  background: rgba(0, 0, 0, 0.92);
+  z-index: 2000;
+}
+/* 横に並べてscroll-snapで1枚ずつ止める。スワイプはブラウザ標準のスクロール */
+.pv-track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x mandatory;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.pv-track::-webkit-scrollbar { display: none; }
+.pv-slide {
+  flex: 0 0 100%;
+  height: 100%;
+  scroll-snap-align: center;
+  scroll-snap-stop: always; /* 強く弾いても1枚ずつ */
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 2000;
   cursor: zoom-out;
 }
-.photo-viewer img {
+.pv-slide img {
   max-width: 96vw;
-  max-height: 92dvh;
+  max-height: 86dvh;
+  object-fit: contain;
   border-radius: 6px;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.pv-count {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 18px);
+  left: 50%;
+  transform: translateX(-50%);
+  color: #fff;
+  font-size: 14px;
+  pointer-events: none;
+}
+.pv-close {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0px) + 8px);
+  right: 8px;
+  width: 44px;
+  height: 44px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+/* 矢印はマウス操作の端末だけ。スマホはスワイプ */
+.pv-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 64px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  color: #fff;
+  font-size: 32px;
+  line-height: 1;
+  cursor: pointer;
+}
+.pv-prev { left: 8px; }
+.pv-next { right: 8px; }
+@media (hover: none) {
+  .pv-nav { display: none; }
 }
 
 .popup-photos {

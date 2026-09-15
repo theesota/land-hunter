@@ -19,9 +19,11 @@ await page.route('**/disaportaldata.gsi.go.jp/**', (r) => r.fulfill({ status: 40
 await page.route('**/overpass-api.de/**', (r) => r.fulfill({ contentType: 'application/json', body: '{"elements":[]}' }));
 await page.addInitScript(() => localStorage.setItem('tasobow.landscout.view.v1', JSON.stringify({ lat: 36.3033, lng: 139.2087, zoom: 14 })));
 await page.goto('http://localhost:8776/index.html', { waitUntil: 'domcontentloaded' });
-await page.waitForSelector('#search-input');
+await page.waitForSelector('#btn-search-open');
 
 async function search(q) {
+  // 検索欄は虫眼鏡ボタンを押したときだけ出る
+  if (await page.isVisible('#btn-search-open')) await page.click('#btn-search-open');
   await page.fill('#search-input', q);
   await page.press('#search-input', 'Enter');
   await page.waitForSelector('#search-results li', { timeout: 8000 });
