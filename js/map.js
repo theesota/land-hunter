@@ -7,6 +7,7 @@ import {
 } from './config.js';
 import { loadView, saveView, loadBasemap, saveBasemap } from './store.js';
 import { hazardHtml, carMinutes, landInfoRows } from './landinfo.js';
+import { listingSearchUrl } from './config.js';
 
 const ROAD_LABELS = { north: '北', east: '東', south: '南', west: '西' };
 
@@ -209,8 +210,11 @@ export class MapView {
         const { dist, time } = this._distanceParts(spot, r);
         return `<span class="d-name">${escapeHtml(r.name)}</span><span class="d-km">${dist}</span><span class="d-time">${time}</span><a href="${drive}" target="_blank" rel="noopener" class="popup-drive">車ルート</a>`;
       }).join('')}</div>` : '';
+    // 物件URLがあればそれ。無ければ住所で「探す」リンク(売り出し中と断定はしない)
+    const addr = spot.address || (spot.info && spot.info.address) || '';
     const listing = spot.url
-      ? `<a href="${escapeHtml(spot.url)}" target="_blank" rel="noopener" class="popup-listing">物件ページを開く</a>` : '';
+      ? `<a href="${escapeHtml(spot.url)}" target="_blank" rel="noopener" class="popup-listing">物件ページ</a>`
+      : (addr ? `<a href="${listingSearchUrl(addr)}" target="_blank" rel="noopener" class="popup-listing ghost">売地をネットで探す</a>` : '');
     return `
       <div class="popup">
         <strong>${escapeHtml(spot.name)}</strong>

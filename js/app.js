@@ -1,6 +1,6 @@
 // UIの結線。地点データの出し入れはすべてdata.js経由(クラウド同期/ローカルの違いを吸収)。
 
-import { HAZARD_LAYERS, SCHOOL_LAYERS, ZONE_LAYERS, STATUSES, BUILD, statusById, GEOCODER_URL, LISTINGS_LINK } from './config.js';
+import { HAZARD_LAYERS, SCHOOL_LAYERS, ZONE_LAYERS, STATUSES, BUILD, statusById, GEOCODER_URL, listingSearchUrl } from './config.js';
 import { collectLandInfo, hazardHtml, zoneHtml, buildableText, BUILDABLE_NOTE, DEPTH_COLORS, searchStations, schoolLines, facilityLines } from './landinfo.js';
 import { createSpot, loadEnabledLayers, saveEnabledLayers, loadSort, saveSort } from './store.js';
 import {
@@ -751,7 +751,11 @@ function renderLandInfo(info, loading) {
     }
     return `<div class="land-info-row"><span class="land-info-label">${label}</span><span>${value}</span></div>`;
   });
-  rows.push(`<div class="land-info-row"><span class="land-info-label">売出し</span><a href="${LISTINGS_LINK.url}" target="_blank" rel="noopener">${LISTINGS_LINK.label}</a></div>`);
+  // 売り出し中かは自動では分からない。住所が取れていれば「探す」導線だけ置く
+  const addr = ($('#spot-address').value || (info && info.address) || '').trim();
+  if (addr) {
+    rows.push(`<div class="land-info-row"><span class="land-info-label">売出し</span><a href="${listingSearchUrl(addr)}" target="_blank" rel="noopener">ネットで探す</a></div>`);
+  }
   box.innerHTML = rows.join('');
 }
 

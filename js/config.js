@@ -110,19 +110,20 @@ export const ZONE_LAYERS = [
 ];
 export const TOKUTEI_FILE = 'data/zone/isesaki_tokutei.geojson';
 
-// 周辺の売出し情報(公開APIが存在しないため、エリアの物件一覧ページへのリンクで代替)
-export const LISTINGS_LINK = {
-  label: 'SUUMOで伊勢崎市の売土地を見る',
-  url: 'https://suumo.jp/tochi/gumma/sc_isesaki/',
-};
 
 export const DEFAULT_BASEMAP = 'bright';
 
 // 反映確認用の版。deployのたびに日付+連番で上げる(設定の同期欄に出る)
-export const BUILD = '2026-09-16c';
+export const BUILD = '2026-09-16d';
 
 // 地域検索(国土地理院 住所検索API)。地名・駅名・施設名・住所を引ける。キー不要。
 export const GEOCODER_URL = 'https://msearch.gsi.go.jp/address-search/AddressSearch?q=';
 
 // 初期表示(地点も保存ビューもないとき): 日本全体
 export const DEFAULT_VIEW = { lat: 36.2, lng: 138.25, zoom: 5 };
+
+// 「売りに出ているか」を自動で拾える公開データは無い(SUUMO等は規約で自動収集禁止、公開APIも無い)。
+// だから断定はせず、住所で検索するリンクだけを出す。
+export function listingSearchUrl(address) {
+  return `https://www.google.com/search?q=${encodeURIComponent(`${address} 売地`)}`;
+}

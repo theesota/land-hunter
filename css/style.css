@@ -731,6 +731,7 @@ html, body {
   flex-shrink: 0;
 }
 
+.popup-listing.ghost { color: #777; font-weight: 500; }
 .popup-listing {
   display: block;
   margin: 6px 0;
