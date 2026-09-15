@@ -194,7 +194,6 @@ export class MapView {
   detailHtml(spot) {
     const st = statusById(spot.status);
     const stars = spot.rating ? '★'.repeat(spot.rating) : '';
-    const gmap = `https://www.google.com/maps?q=${spot.lat},${spot.lng}`;
     // Google公式のMaps URLs形式。その地点のストリートビューを直接開く。
     const streetview = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${spot.lat},${spot.lng}`;
     const memo = spot.memo ? `<p class="popup-memo">${escapeHtml(spot.memo)}</p>` : '';
@@ -226,7 +225,6 @@ export class MapView {
         ${listing}
         <div class="popup-links">
           <a href="${streetview}" target="_blank" rel="noopener">ストリートビュー</a>
-          <a href="${gmap}" target="_blank" rel="noopener">Googleマップ</a>
         </div>
         <button type="button" class="popup-edit">編集</button>
       </div>`;
