@@ -45,7 +45,7 @@ await b.goto('http://localhost:8776/index.html?emu=1', { waitUntil: 'domcontentl
 await b.waitForSelector('#map.leaflet-container');
 await b.waitForTimeout(2500);
 console.log('別端末: 最初のピン数 =', await b.locator('.spot-pin').count());
-await b.click('#btn-settings');
+await b.click('#btn-menu'); await b.click('#btn-settings');
 await b.fill('#join-input', NEW_BOARD);
 await b.press('#join-input', 'Enter');
 await b.waitForTimeout(1000);
@@ -59,7 +59,7 @@ const c = await newDevice('リンク貼り付け');
 await c.goto('http://localhost:8776/index.html?emu=1', { waitUntil: 'domcontentloaded' });
 await c.waitForSelector('#map.leaflet-container');
 await c.waitForTimeout(2000);
-await c.click('#btn-settings');
+await c.click('#btn-menu'); await c.click('#btn-settings');
 await c.fill('#join-input', `http://localhost:8776/index.html#b=${NEW_BOARD}`);
 await c.press('#join-input', 'Enter');
 await c.waitForTimeout(1000);

@@ -14,12 +14,12 @@ async function open(url, ctxOpts = {}) {
   await page.route('**/overpass-api.de/**', (r) => r.fulfill({ contentType: 'application/json', body: '{"elements":[]}' }));
   await page.addInitScript(() => localStorage.setItem('tasobow.landscout.view.v1', JSON.stringify({ lat: 36.3033, lng: 139.2087, zoom: 16 })));
   await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => ['同期済み', 'オフライン'].includes(document.querySelector('#sync-state').textContent), { timeout: 20000 });
+  await page.waitForFunction(() => ['synced', 'offline'].includes(document.body.dataset.sync), { timeout: 20000 });
   return { ctx, page };
 }
 
 async function openPanel(page, sel, btn) {
-  if (await page.$eval(sel, (e) => e.hidden)) await page.click(btn);
+  if (await page.$eval(sel, (e) => e.hidden)) { await page.evaluate(() => document.querySelectorAll('.page').forEach((p) => (p.hidden = true))); await page.click('#btn-menu'); await page.click(btn); }
   await page.waitForSelector(sel, { state: 'visible' });
 }
 
@@ -65,11 +65,11 @@ console.log('持ち込みラベル:', carryLabel);
 if (!carryLabel.includes('2件')) fails.push('持ち込み件数が出ていない: ' + carryLabel);
 await pc.page.fill('#join-input', phBoard);
 await pc.page.click('#join-form button[type=submit]');
-await pc.page.waitForFunction(() => document.querySelector('#sync-state').textContent === '同期済み', { timeout: 20000 });
+await pc.page.waitForFunction(() => document.body.dataset.sync === 'synced', { timeout: 20000 });
 await pc.page.waitForTimeout(2500);
 
 await openPanel(pc.page, '#panel-list', '#btn-list');
-const pcNames = await pc.page.$$eval('#spot-list li .spot-name', (els) => els.map((e) => e.textContent.trim()));
+const pcNames = await pc.page.$$eval('#spot-list .land-name', (els) => els.map((e) => e.textContent.trim()));
 console.log('参加後のPCの一覧:', pcNames.join(' / ').slice(0, 200));
 for (const n of ['PCで見つけた土地A', 'PCで見つけた土地B', 'スマホで見つけた土地C']) {
   if (!pcNames.some((t) => t.includes(n))) fails.push('参加後に見えない: ' + n);
@@ -78,7 +78,7 @@ for (const n of ['PCで見つけた土地A', 'PCで見つけた土地B', 'スマ
 // スマホ側にもPCの2件が届く
 await ph.page.waitForTimeout(2500);
 await openPanel(ph.page, '#panel-list', '#btn-list');
-const phNames = await ph.page.$$eval('#spot-list li .spot-name', (els) => els.map((e) => e.textContent));
+const phNames = await ph.page.$$eval('#spot-list .land-name', (els) => els.map((e) => e.textContent));
 for (const n of ['PCで見つけた土地A', 'PCで見つけた土地B']) {
   if (!phNames.some((t) => t.includes(n))) fails.push('スマホ側に届いていない: ' + n);
 }
@@ -90,7 +90,7 @@ const mom = await open(invite.includes('?') ? invite : invite.replace('#', '?emu
 await mom.page.waitForTimeout(2500);
 if (!(await mom.page.$eval('#sheet-board', (e) => e.hidden))) fails.push('招待リンクで開いたのに新規ボード案内が出た');
 await openPanel(mom.page, '#panel-list', '#btn-list');
-const momNames = await mom.page.$$eval('#spot-list li .spot-name', (els) => els.map((e) => e.textContent));
+const momNames = await mom.page.$$eval('#spot-list .land-name', (els) => els.map((e) => e.textContent));
 console.log('お義母さん側の件数:', momNames.length);
 if (momNames.length !== 3) fails.push('招待リンクで3件見えない: ' + momNames.length);
 

@@ -26,7 +26,7 @@ const labels = await page.$$eval('.school-label', (els) => els.map((e) => e.text
 console.log('面の数:', paths, '/ ラベル:', labels);
 if (!paths) fails.push('調整区域の面が描かれない');
 if (!labels.includes('市街化調整区域')) fails.push('調整区域ラベルが無い');
-await page.evaluate(() => document.querySelectorAll('.panel').forEach((p) => (p.hidden = true)));
+await page.evaluate(() => document.querySelectorAll('.panel, .page').forEach((p) => (p.hidden = true)));
 await page.screenshot({ path: 'zone_map.png' });
 
 // 田園部(境上武士あたり)をタップ → 区域区分 = 市街化調整区域
@@ -58,11 +58,11 @@ for (const t of ['60坪', '900万円', '坪15.0万', '上水道あり', '下水�
 if (detail.includes('建ぺい')) fails.push('調整区域なのに用途地域が出ている');
 await page.screenshot({ path: 'zone_detail.png' });
 // 一覧にも坪数・価格
-await page.click('#btn-list');
-const sub = await page.textContent('#spot-list li .spot-sub');
+await page.click('#btn-menu'); await page.click('#btn-list');
+const sub = await page.textContent('#spot-list .land-sub');
 if (!sub.includes('60坪') || !sub.includes('900万')) fails.push('一覧に坪数・価格が出ない: ' + sub);
 // 編集で値が戻る
-await page.evaluate(() => document.querySelectorAll('.panel').forEach((p) => (p.hidden = true)));
+await page.evaluate(() => document.querySelectorAll('.panel, .page').forEach((p) => (p.hidden = true)));
 await page.click('.leaflet-marker-icon.spot-pin-wrap');
 await page.waitForSelector('#sheet-detail:not([hidden])');
 await page.click('.popup-edit');
@@ -95,8 +95,8 @@ await page.fill('#spot-name', '駅前の土地');
 await page.click('#spot-form button[type=submit]');
 await page.waitForSelector('#sheet-spot', { state: 'hidden' });
 await page.waitForTimeout(500);
-await page.click('#btn-list');
-await page.click('#spot-list li:has-text("駅前の土地")');
+await page.click('#btn-menu'); await page.click('#btn-list');
+await page.click('#spot-list .land-row:has-text("駅前の土地")');
 await page.waitForSelector('#sheet-detail:not([hidden])');
 const d2 = await page.textContent('#detail-body');
 if (!d2.includes('1階 最大30.0坪')) fails.push('詳細に建てられる目安が出ない');

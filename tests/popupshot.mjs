@@ -19,9 +19,9 @@ await page.addInitScript(() => {
 await page.goto('http://localhost:8776/index.html', { waitUntil: 'domcontentloaded' });
 await page.waitForSelector('.leaflet-marker-icon');
 async function openSpot() {
-  await page.evaluate(() => document.querySelectorAll('.panel').forEach((p) => (p.hidden = true)));
-  await page.click('#btn-list');
-  await page.click('#spot-list li:has-text("南千木の角地")');
+  await page.evaluate(() => document.querySelectorAll('.panel, .page').forEach((p) => (p.hidden = true)));
+  await page.click('#btn-menu'); await page.click('#btn-list');
+  await page.click('#spot-list .land-row:has-text("南千木の角地")');
   await page.waitForSelector('#sheet-detail .popup-info');
 }
 await openSpot();
@@ -43,7 +43,7 @@ const sheetTop = await page.$eval('#sheet-detail', (e) => e.getBoundingClientRec
 console.log('pin bottom:', pin, '/ sheet top:', sheetTop);
 if (pin !== null && pin > sheetTop) fails.push('ピンがシートに隠れている');
 // 設定で中学校区をONにするとポップアップにも出る
-await page.click('#btn-settings');
+await page.click('#btn-menu'); await page.click('#btn-settings');
 await page.waitForSelector('#enabled-toggles input');
 const cbs = await page.$$('#enabled-toggles label');
 for (const l of cbs) { if ((await l.textContent()).includes('中学校区')) { await (await l.$('input')).check(); break; } }

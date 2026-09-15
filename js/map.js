@@ -15,9 +15,14 @@ export class MapView {
     const saved = loadView();
     this.hadSavedView = !!saved;
     const view = saved || DEFAULT_VIEW;
+    // ズームボタンは出さない(スマホはピンチ、PCはホイール)。縮尺だけ残す。
     this.map = L.map(containerId, { zoomControl: false }).setView([view.lat, view.lng], view.zoom);
-    L.control.zoom({ position: 'bottomleft' }).addTo(this.map);
     L.control.scale({ imperial: false }).addTo(this.map);
+    // ハザードは乗算で重ねる。塗りの下でも道路や地名が読める。
+    const hazardPane = this.map.createPane('hazard');
+    hazardPane.style.zIndex = 250;
+    hazardPane.style.mixBlendMode = 'multiply';
+    hazardPane.style.pointerEvents = 'none';
 
     this.baseLayers = {};
     for (const [key, def] of Object.entries(BASE_MAPS)) {
@@ -29,7 +34,7 @@ export class MapView {
     this.currentBasemap = BASE_MAPS[loadBasemap()] ? loadBasemap() : DEFAULT_BASEMAP;
     this.baseLayers[this.currentBasemap].addTo(this.map);
 
-    this.hazardOpacity = 0.75; // 固定(UIでの調整は廃止)
+    this.hazardOpacity = 0.7; // 固定(UIでの調整は廃止)。乗算なのでこの濃さでも地図が透ける
     this.hazardLayers = {};
     for (const def of HAZARD_LAYERS) {
       this.hazardLayers[def.id] = L.tileLayer(def.url, {
@@ -37,6 +42,7 @@ export class MapView {
         maxNativeZoom: HAZARD_MAX_NATIVE_ZOOM,
         maxZoom: 18,
         opacity: this.hazardOpacity,
+        pane: 'hazard',
       });
       if (def.defaultOn) this.hazardLayers[def.id].addTo(this.map);
     }

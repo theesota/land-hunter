@@ -48,8 +48,8 @@ await page.evaluate(async () => {
   }
 });
 
-await page.click('#btn-list');
-await page.click('#spot-list li:has-text("写真3枚の土地")');
+await page.click('#btn-menu'); await page.click('#btn-list');
+await page.click('#spot-list .land-row:has-text("写真3枚の土地")');
 await page.waitForSelector('#sheet-detail .popup-photos img');
 const n = await page.$$eval('#sheet-detail .popup-photos img', (els) => els.length);
 if (n !== 3) fails.push(`詳細のサムネが3枚でない: ${n}`);

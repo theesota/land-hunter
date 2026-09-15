@@ -2,7 +2,7 @@
 
 import { HAZARD_LAYERS, SCHOOL_LAYERS, ZONE_LAYERS, STATUSES, statusById, GEOCODER_URL, LISTINGS_LINK } from './config.js';
 import { collectLandInfo, hazardHtml, zoneHtml, buildableText, BUILDABLE_NOTE, DEPTH_COLORS, searchStations, schoolLines, facilityLines } from './landinfo.js';
-import { createSpot, loadEnabledLayers, saveEnabledLayers } from './store.js';
+import { createSpot, loadEnabledLayers, saveEnabledLayers, loadSort, saveSort } from './store.js';
 import {
   initData, getSpots, getMode, getInviteUrl, getBoardId, getStatus, flushPending, switchBoard,
   saveSpot, deleteSpot, restoreSpot, purgeSpot, listPhotos, addPhoto, deletePhoto, compressImage,
@@ -39,7 +39,7 @@ const mapView = new MapView('map', {
       openSpotSheet(null);
       return;
     }
-    promptRegister(latlng, refPickMode ? `ここを「${refPickName}」にしますか?` : 'この場所を登録しますか?');
+    promptRegister(latlng, refPickMode ? `ここを「${refPickName}」にしますか?` : 'ここを登録する?');
   },
   onMarkerSelect: (id) => {
     const spot = spots.find((s) => s.id === id);
@@ -48,7 +48,7 @@ const mapView = new MapView('map', {
   // 青い現在地マーカーをタップしたら、その場所をそのまま登録できる
   onLocationClick: (latlng) => {
     if (!$('#sheet-spot').hidden) return;
-    promptRegister(latlng, refPickMode ? `現在地を「${refPickName}」にしますか?` : '現在地を登録しますか?');
+    promptRegister(latlng, refPickMode ? `現在地を「${refPickName}」にしますか?` : '現在地を登録する?');
   },
 });
 
@@ -59,7 +59,7 @@ function promptRegister(latlng, text) {
   pendingLatLng = latlng;
   mapView.setPendingMarker(latlng);
   $('#confirm-text').textContent = text;
-  $('#btn-confirm-add').textContent = refPickMode ? 'ここにする' : '登録する';
+  $('#btn-confirm-add').textContent = refPickMode ? 'ここにする' : '登録';
   $('#pick-hint').hidden = true; // 確認バーが出たら案内は引っ込める
   $('#confirm-bar').hidden = false;
 }
@@ -109,7 +109,7 @@ function currentPositionOnce() {
 
 async function registerFromPhotos(files, { fromCamera }) {
   if (!files.length) return;
-  showToast('写真を読み込んでいます…');
+  showToast('写真を読み込み中');
   let latlng = null;
   const photos = [];
   for (const file of files) {
@@ -215,7 +215,8 @@ $('#btn-detail-close').addEventListener('click', closeDetail);
 
 // ---- パネル開閉 ----
 
-const panels = ['#panel-layers', '#panel-list', '#panel-share', '#panel-settings'].map((s) => $(s));
+// 表示パネルは地図の上に重なる小さなカード。メニュー・一覧・共有・設定は全画面の1ページ。
+const panels = ['#panel-layers', '#page-menu', '#panel-list', '#panel-share', '#panel-settings'].map((s) => $(s));
 
 function closePanels() {
   for (const p of panels) p.hidden = true;
@@ -229,11 +230,20 @@ function togglePanel(sel) {
   panel.hidden = !willOpen;
 }
 
+// ページは「開く」だけ。戻るボタンで地図へ
+function openPage(sel) {
+  closePanels();
+  closeDetail();
+  $(sel).hidden = false;
+  $(sel).querySelector('.page-body').scrollTop = 0;
+}
+
 $('#btn-layers').addEventListener('click', () => togglePanel('#panel-layers'));
-$('#btn-list').addEventListener('click', () => { renderList(); togglePanel('#panel-list'); });
-$('#btn-share').addEventListener('click', () => togglePanel('#panel-share'));
-$('#btn-settings').addEventListener('click', () => { renderRefList(); renderEnabledToggles(); renderDiagnostics(); togglePanel('#panel-settings'); });
-for (const btn of document.querySelectorAll('.panel-close')) {
+$('#btn-menu').addEventListener('click', () => openPage('#page-menu'));
+$('#btn-list').addEventListener('click', () => { renderList(); openPage('#panel-list'); });
+$('#btn-share').addEventListener('click', () => openPage('#panel-share'));
+$('#btn-settings').addEventListener('click', () => { renderRefList(); renderEnabledToggles(); renderDiagnostics(); openPage('#panel-settings'); });
+for (const btn of document.querySelectorAll('.panel-close, .page-back')) {
   btn.addEventListener('click', closePanels);
 }
 
@@ -252,7 +262,7 @@ let enabledIds = loadEnabledLayers() || ALL_LAYERS.filter((d) => d.id !== 'junio
 const schoolKindIds = () => enabledIds.filter((id) => SCHOOL_LAYERS.some((d) => d.id === id));
 const activeIds = new Set(HAZARD_LAYERS.filter((d) => d.defaultOn).map((d) => d.id));
 
-const BASEMAP_LABELS = { osm: '標準', pale: '淡色', photo: '航空写真' };
+const BASEMAP_LABELS = { bright: '地図', pale: 'うすい', photo: '写真' };
 
 function renderBasemapChips() {
   const box = $('#basemap-chips');
@@ -434,7 +444,7 @@ function renderSearchResults(places) {
         // ピンポイントの結果は、そのまま登録できるところまで持っていく
         mapView.focusSearchResult(place.lat, place.lng, place.title, { zoom: 17, marker: false });
         promptRegister({ lat: place.lat, lng: place.lng }, refPickMode
-          ? `ここを「${refPickName}」にしますか?` : `${place.title}\nこの場所を登録しますか?`);
+          ? `ここを「${refPickName}」にしますか?` : `${place.title}\nここを登録する?`);
       } else {
         mapView.focusSearchResult(place.lat, place.lng, place.title);
       }
@@ -631,7 +641,7 @@ function startLocate() {
   }, () => clearTimeout(geoTimer));
   $('#btn-locate').classList.toggle('active', on);
   if (on) {
-    showToast('現在地を取得中…青い点をタップすると登録できます');
+    showToast('現在地を取得中');
     // 許可ダイアログを放置された場合など、ブラウザが成功も失敗も返さないことがある。
     // 待ちっぱなしにせず、こちらから打ち切って案内を出す。
     geoTimer = setTimeout(() => {
@@ -732,13 +742,13 @@ function renderLandInfo(info, loading) {
     } else if (key === 'build') {
       // 坪数の入力に合わせてその場で計算する(用途地域が取れてからでないと出ない)
       const t = buildableText(info, $('#spot-area').value);
-      value = t ? `${t}<small class="hz-note">${BUILDABLE_NOTE}</small>` : (info && info.youto ? '坪数を入れると出ます' : (loading ? '取得中…' : '-'));
+      value = t ? `${t}<small class="hz-note">${BUILDABLE_NOTE}</small>` : (info && info.youto ? '坪数を入れると出る' : (loading ? '取得中' : '-'));
     } else if (key === 'school' && info && info.school) {
       value = schoolLines(info.school, new Set(schoolKindIds())).join('<br>') || '-';
     } else if (key === 'facility' && info && info.facility) {
       value = facilityLines(info.facility).join('<br>');
     } else {
-      value = info && info[key] ? info[key] : (loading ? '取得中…' : '-');
+      value = info && info[key] ? info[key] : (loading ? '取得中' : '-');
     }
     return `<div class="land-info-row"><span class="land-info-label">${label}</span><span>${value}</span></div>`;
   });
@@ -956,7 +966,7 @@ $('#btn-spot-delete').addEventListener('click', async () => {
   closeSpotSheet();
   try {
     await deleteSpot(id);
-    showToast('ゴミ箱に移しました(一覧から戻せます)');
+    showToast('ゴミ箱へ');
   } catch {
     showToast('削除に失敗しました');
   }
@@ -964,26 +974,141 @@ $('#btn-spot-delete').addEventListener('click', async () => {
 
 // ---- 地点一覧 ----
 
+// 並び: ★(既定)・価格・広さ・坪単価・新しい順・じぶん(ドラッグで決めた順)
+const SORTS = [
+  ['star', '★'], ['price', '価格'], ['area', '広さ'], ['unit', '坪単価'], ['new', '新しい'], ['manual', 'じぶん'],
+];
+let sortKey = loadSort();
+
+const landSpots = () => spots.filter((s) => s.status !== 'reference');
+const unitPrice = (s) => (s.price > 0 && s.area > 0 ? s.price / s.area : null);
+const byNewest = (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0);
+
+function sortedLand() {
+  const list = landSpots();
+  const nz = (v, fallback) => (v > 0 ? v : fallback);
+  switch (sortKey) {
+    case 'price': return list.sort((a, b) => nz(a.price, Infinity) - nz(b.price, Infinity) || byNewest(a, b));
+    case 'area': return list.sort((a, b) => nz(b.area, -1) - nz(a.area, -1) || byNewest(a, b));
+    case 'unit': return list.sort((a, b) => (unitPrice(a) ?? Infinity) - (unitPrice(b) ?? Infinity) || byNewest(a, b));
+    case 'new': return list.sort(byNewest);
+    case 'manual': return list.sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity) || byNewest(a, b));
+    default: return list.sort((a, b) => (b.rating || 0) - (a.rating || 0) || byNewest(a, b));
+  }
+}
+
+function renderSortChips() {
+  const box = $('#sort-chips');
+  box.innerHTML = '';
+  for (const [key, label] of SORTS) {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'mini-chip' + (sortKey === key ? ' active' : '');
+    btn.textContent = label;
+    btn.addEventListener('click', () => { sortKey = key; saveSort(key); renderList(); });
+    box.append(btn);
+  }
+}
+
+// 1行に「名前・★・広さ 価格 坪単価・調整区域の警告」だけ。説明は詳細に任せる
+function landRow(spot) {
+  const st = statusById(spot.status);
+  const li = document.createElement('li');
+  li.className = 'land-row';
+  li.dataset.id = spot.id;
+  const bits = [];
+  if (spot.area > 0) bits.push(`${spot.area}坪`);
+  if (spot.price > 0) bits.push(`${Number(spot.price).toLocaleString()}万`);
+  const u = unitPrice(spot);
+  if (u) bits.push(`坪${u.toFixed(1)}万`);
+  const zone = spot.info && spot.info.zone === '市街化調整区域' ? '<span class="warn">調整区域</span>' : '';
+  li.innerHTML = `
+    <span class="dot" style="background:${st.color}"></span>
+    <div class="land-main"><div class="land-name"></div><div class="land-sub"></div></div>
+    <span class="land-stars">${'★'.repeat(spot.rating || 0)}</span>
+    <span class="grip" aria-label="並べ替え"><svg class="icon"><use href="#ic-grip"/></svg></span>`;
+  li.querySelector('.land-name').textContent = spot.name || '(名前なし)';
+  li.querySelector('.land-sub').innerHTML = [bits.join(' · '), zone].filter(Boolean).join(' · ');
+  li.addEventListener('click', (e) => {
+    if (e.target.closest('.grip')) return;
+    closePanels();
+    mapView.focusSpot(spot);
+  });
+  return li;
+}
+
 function renderList() {
+  renderSortChips();
   const ul = $('#spot-list');
   ul.innerHTML = '';
-  $('#spot-empty').hidden = spots.length > 0;
-  const sorted = [...spots].sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-  for (const spot of sorted) {
-    const st = statusById(spot.status);
-    const li = document.createElement('li');
-    li.innerHTML = `
-      <span class="dot" style="background:${st.color}"></span>
-      <span class="spot-name"></span>
-      <span class="spot-sub">${[st.label, spot.area ? `${spot.area}坪` : '', spot.price ? `${spot.price}万` : ''].filter(Boolean).join(' ')}${spot.rating ? ' ' + '★'.repeat(spot.rating) : ''}</span>`;
-    li.querySelector('.spot-name').textContent = spot.name || '(名称未設定)';
-    li.addEventListener('click', () => {
-      closePanels();
-      mapView.focusSpot(spot);
-    });
-    ul.append(li);
-  }
+  const list = sortedLand();
+  $('#spot-empty').hidden = list.length > 0;
+  for (const spot of list) ul.append(landRow(spot));
+  enableDrag(ul);
   renderTrash();
+}
+
+// ドラッグで並べ替え。つまみ(⋮⋮)だけを掴む。指を離したら order を保存して「じぶん」順に切り替える。
+// HTML5のドラッグはiOS Safariで効かないので pointer イベントで自前で動かす。
+function enableDrag(ul) {
+  let dragging = null;
+  let placeholder = null;
+  let offsetY = 0;
+  const rowsExcept = () => [...ul.querySelectorAll('li.land-row:not(.dragging):not(.placeholder)')];
+  const move = (e) => {
+    if (!dragging) return;
+    dragging.style.top = `${e.clientY - offsetY}px`;
+    for (const row of rowsExcept()) {
+      const r = row.getBoundingClientRect();
+      if (e.clientY < r.top + r.height / 2) { row.before(placeholder); return; }
+    }
+    ul.append(placeholder);
+  };
+  const end = async () => {
+    if (!dragging) return;
+    placeholder.replaceWith(dragging);
+    dragging.classList.remove('dragging');
+    dragging.style.cssText = '';
+    dragging = null;
+    placeholder = null;
+    await persistOrder(ul);
+  };
+  for (const grip of ul.querySelectorAll('.grip')) {
+    grip.addEventListener('pointerdown', (e) => {
+      const li = grip.closest('li');
+      const r = li.getBoundingClientRect();
+      dragging = li;
+      offsetY = e.clientY - r.top;
+      placeholder = document.createElement('li');
+      placeholder.className = 'land-row placeholder';
+      placeholder.style.height = `${r.height}px`;
+      li.after(placeholder);
+      li.classList.add('dragging');
+      li.style.cssText = `position:fixed;top:${r.top}px;left:${r.left}px;width:${r.width}px;`;
+      grip.setPointerCapture(e.pointerId);
+      e.preventDefault();
+    });
+    grip.addEventListener('pointermove', move);
+    grip.addEventListener('pointerup', end);
+    grip.addEventListener('pointercancel', end);
+  }
+}
+
+async function persistOrder(ul) {
+  const ids = [...ul.querySelectorAll('li.land-row[data-id]')].map((li) => li.dataset.id);
+  sortKey = 'manual';
+  saveSort(sortKey);
+  renderSortChips();
+  const changed = [];
+  ids.forEach((id, i) => {
+    const s = spots.find((x) => x.id === id);
+    if (s && s.order !== i) changed.push({ ...s, order: i });
+  });
+  try {
+    await Promise.all(changed.map((s) => saveSpot(s)));
+  } catch {
+    showToast('並びを保存できなかった');
+  }
 }
 
 // ゴミ箱。畳んでおいて件数だけ見せる。開くと「戻す」「完全に削除」。
@@ -1081,7 +1206,7 @@ $('#diag-board').addEventListener('click', async () => {
   if (!id) return;
   try {
     await navigator.clipboard.writeText(getInviteUrl());
-    showToast('招待リンクをコピーしました');
+    showToast('リンクをコピー');
   } catch {
     prompt('このリンクを送ってください', getInviteUrl());
   }
@@ -1156,7 +1281,7 @@ $('#btn-copy-link').addEventListener('click', async () => {
   const url = getInviteUrl();
   try {
     await navigator.clipboard.writeText(url);
-    showToast('招待リンクをコピーしました');
+    showToast('リンクをコピー');
   } catch {
     prompt('このリンクを送ってください', url);
   }
@@ -1166,7 +1291,7 @@ $('#btn-share-native').addEventListener('click', async () => {
   await ensureSynced();
   const url = getInviteUrl();
   if (navigator.share) {
-    navigator.share({ title: '土地ハンター', text: '土地探しの地図を共有します', url }).catch(() => {});
+    navigator.share({ title: 'とちげっちゅ', text: '土地探しの地図', url }).catch(() => {});
   } else {
     prompt('このリンクを送ってください', url);
   }
@@ -1206,34 +1331,20 @@ function applySpots(next) {
 
 // バッジは「本当にサーバーに届いているか」を映す。
 // 未送信が残っている間を「同期中」と表示すると、共有できていない事実が隠れてしまう。
+// ヘッダーのバッジは廃止(常時「同期済」と出ているのは情報ではなく飾りだった)。状態は設定の同期欄で見る。
 function renderSyncState() {
-  const badge = $('#sync-state');
-  if (getMode() !== 'cloud') {
-    badge.textContent = 'この端末のみ';
-    badge.className = 'sync-state off';
-    return;
-  }
   const st = getStatus();
-  if (st.pending) {
-    badge.textContent = '保存待ち';
-    badge.className = 'sync-state warn';
-  } else if (st.synced) {
-    badge.textContent = '同期済み';
-    badge.className = 'sync-state on';
-  } else {
-    badge.textContent = 'オフライン';
-    badge.className = 'sync-state warn';
-  }
+  document.body.dataset.sync = getMode() !== 'cloud' ? 'local' : st.pending ? 'pending' : st.synced ? 'synced' : 'offline';
   if (!$('#panel-settings').hidden) renderDiagnostics();
 }
 
 function renderDiagnostics() {
   const st = getStatus();
   $('#join-carry-label').textContent = spots.length
-    ? `この端末の${spots.length}件も持ち込む` : 'この端末の地点も持ち込む';
-  const state = getMode() !== 'cloud' ? 'この端末のみ(未接続)'
-    : st.pending ? '保存待ち(未送信あり)'
-      : st.synced ? '同期済み' : 'オフライン';
+    ? `この端末の${spots.length}件も持ち込む` : 'この端末の分も持ち込む';
+  const state = getMode() !== 'cloud' ? 'この端末だけ'
+    : st.pending ? '送信待ち'
+      : st.synced ? 'OK' : 'オフライン';
   $('#diag-state').textContent = state;
   $('#diag-count').textContent = `${spots.length}件`;
   $('#diag-board').textContent = getBoardId() || '-';

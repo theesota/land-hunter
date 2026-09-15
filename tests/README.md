@@ -22,6 +22,7 @@ node popupshot.mjs    # 詳細シートの内容(学区の連動、アイコン)
 node searchtest.mjs   # 緯度経度・URL・郵便番号付き住所の検索
 node cameratest.mjs   # カメラモード(EXIF/現在地/地図タップ)
 node photoslidetest.mjs  # 写真のスライド表示・虫眼鏡だけの検索
+node uishot.mjs       # 新UI(配置・一覧の並び・ドラッグ)
 node zonetest.mjs     # 区域区分・用途地域・坪数/売り値/上下水道・建てられる目安
 node coordunit.mjs exifunit.mjs  # 単体(ブラウザ不要)
 ```

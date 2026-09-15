@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="theme-color" content="#1a6b52">
-  <title>土地ハンター | 家づくり土地探しマップ</title>
+  <meta name="theme-color" content="#3d434b">
+  <title>とちげっちゅ</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Hachi+Maru+Pop&family=Zen+Maru+Gothic:wght@500;700&display=swap">
   <link rel="stylesheet" href="vendor/leaflet/leaflet.min.css">
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -30,18 +33,33 @@
     <symbol id="ic-yen" viewBox="0 0 24 24"><path d="M7 3l5 8 5-8M12 11v10M7 13h10M7 17h10"/></symbol>
     <symbol id="ic-drop" viewBox="0 0 24 24"><path d="M12 2.7s-6.5 7.3-6.5 12a6.5 6.5 0 0 0 13 0c0-4.7-6.5-12-6.5-12z"/></symbol>
     <symbol id="ic-home" viewBox="0 0 24 24"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/><path d="M10 20v-6h4v6"/></symbol>
+    <symbol id="ic-menu" viewBox="0 0 24 24"><line x1="3" y1="7" x2="21" y2="7"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="17" x2="21" y2="17"/></symbol>
+    <symbol id="ic-back" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></symbol>
+    <symbol id="ic-grip" viewBox="0 0 24 24"><circle cx="9" cy="6" r="1.5"/><circle cx="15" cy="6" r="1.5"/><circle cx="9" cy="12" r="1.5"/><circle cx="15" cy="12" r="1.5"/><circle cx="9" cy="18" r="1.5"/><circle cx="15" cy="18" r="1.5"/></symbol>
+    <symbol id="ic-chevron" viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></symbol>
     <symbol id="ic-camera" viewBox="0 0 24 24"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
   </svg>
 
   <header class="topbar">
-    <h1>土地ハンター<span id="sync-state" class="sync-state">…</span></h1>
+    <button id="btn-menu" class="bar-btn" aria-label="メニュー"><svg class="icon"><use href="#ic-menu"/></svg></button>
+    <h1>とちげっちゅ</h1>
     <div class="topbar-actions">
-      <button id="btn-layers" class="bar-btn" aria-label="表示する項目"><svg class="icon"><use href="#ic-layers"/></svg></button>
-      <button id="btn-list" class="bar-btn" aria-label="保存した地点"><svg class="icon"><use href="#ic-list"/></svg></button>
-      <button id="btn-share" class="bar-btn" aria-label="共有"><svg class="icon"><use href="#ic-share"/></svg></button>
-      <button id="btn-settings" class="bar-btn" aria-label="設定"><svg class="icon"><use href="#ic-gear"/></svg></button>
+      <button id="btn-layers" class="bar-btn" aria-label="表示"><svg class="icon"><use href="#ic-layers"/></svg></button>
     </div>
   </header>
+
+  <!-- メニュー(1ページ)。ここから一覧・共有・設定へ -->
+  <section id="page-menu" class="page" hidden>
+    <div class="page-head">
+      <button type="button" class="icon-btn page-back" aria-label="地図へ"><svg class="icon"><use href="#ic-back"/></svg></button>
+      <h2>めにゅー</h2>
+    </div>
+    <div class="page-body menu-body">
+      <button type="button" id="btn-list" class="menu-item"><svg class="icon"><use href="#ic-list"/></svg><span>とち一覧</span><svg class="icon chev"><use href="#ic-chevron"/></svg></button>
+      <button type="button" id="btn-share" class="menu-item"><svg class="icon"><use href="#ic-share"/></svg><span>きょうゆう</span><svg class="icon chev"><use href="#ic-chevron"/></svg></button>
+      <button type="button" id="btn-settings" class="menu-item"><svg class="icon"><use href="#ic-gear"/></svg><span>せってい</span><svg class="icon chev"><use href="#ic-chevron"/></svg></button>
+    </div>
+  </section>
 
   <!-- 地域検索。普段は虫眼鏡ボタンだけ。押したときだけ入力欄を出す -->
   <div class="searchbar collapsed" id="searchbar">
@@ -50,7 +68,7 @@
     </button>
     <form id="search-form" autocomplete="off">
       <svg class="icon search-icon"><use href="#ic-search"/></svg>
-      <input type="search" id="search-input" placeholder="住所・駅名・緯度経度で検索" enterkeyhint="search">
+      <input type="search" id="search-input" placeholder="住所・駅・緯度経度" enterkeyhint="search">
       <button type="button" id="btn-search-close" class="search-close" aria-label="検索を閉じる"><svg class="icon"><use href="#ic-close"/></svg></button>
     </form>
     <ul id="search-results" hidden></ul>
@@ -74,8 +92,8 @@
   </div>
 
   <div id="confirm-bar" class="confirm-bar" hidden>
-    <span id="confirm-text">この場所を登録しますか?</span>
-    <button type="button" id="btn-confirm-add" class="primary">登録する</button>
+    <span id="confirm-text">ここを登録する?</span>
+    <button type="button" id="btn-confirm-add" class="primary">登録</button>
     <button type="button" id="btn-confirm-cancel" class="ghost" aria-label="やめる">
       <svg class="icon"><use href="#ic-close"/></svg>
     </button>
@@ -83,7 +101,7 @@
 
   <!-- 地図上のフローティング操作 -->
   <div class="fab-stack">
-    <button id="btn-camera" class="fab fab-primary" title="写真から登録"><svg class="icon"><use href="#ic-camera"/></svg></button>
+    <button id="btn-camera" class="fab fab-primary" title="写真"><svg class="icon"><use href="#ic-camera"/></svg></button>
     <button id="btn-locate" class="fab" title="現在地"><svg class="icon"><use href="#ic-locate"/></svg></button>
   </div>
   <!-- カメラモード用の入力。capture付きはカメラ直行、無しは写真ライブラリ -->
@@ -93,7 +111,7 @@
   <!-- 表示パネル(地図に重なるので半透明・自動高さのコンパクトカード) -->
   <section id="panel-layers" class="panel-compact" hidden>
     <div class="compact-head">
-      <span>表示</span>
+      <span>ひょうじ</span>
       <button class="icon-btn panel-close" aria-label="閉じる"><svg class="icon"><use href="#ic-close"/></svg></button>
     </div>
     <div class="chip-line" id="basemap-chips"></div>
@@ -104,15 +122,16 @@
     </details>
   </section>
 
-  <!-- 地点一覧 パネル -->
-  <section id="panel-list" class="panel" hidden>
-    <div class="panel-head">
-      <h2>保存した地点</h2>
-      <button class="icon-btn panel-close" aria-label="閉じる"><svg class="icon"><use href="#ic-close"/></svg></button>
+  <!-- とち一覧(1ページ) -->
+  <section id="panel-list" class="page" hidden>
+    <div class="page-head">
+      <button type="button" class="icon-btn page-back" aria-label="地図へ"><svg class="icon"><use href="#ic-back"/></svg></button>
+      <h2>とち一覧</h2>
     </div>
-    <div class="panel-body">
-      <ul id="spot-list" class="spot-list"></ul>
-      <p id="spot-empty" class="note">まだ地点がありません。地図をタップすると登録できます。</p>
+    <div class="page-body">
+      <div id="sort-chips" class="chip-line sort-chips"></div>
+      <ul id="spot-list" class="land-list"></ul>
+      <p id="spot-empty" class="note">まだない。地図をタップで登録。</p>
       <div id="trash-box" class="trash-box" hidden>
         <button type="button" id="trash-toggle" class="trash-toggle">▸ ゴミ箱 (0)</button>
         <div id="trash-body" hidden>
@@ -123,52 +142,52 @@
     </div>
   </section>
 
-  <!-- 共有 パネル -->
-  <section id="panel-share" class="panel" hidden>
-    <div class="panel-head">
-      <h2>共有</h2>
-      <button class="icon-btn panel-close" aria-label="閉じる"><svg class="icon"><use href="#ic-close"/></svg></button>
+  <!-- きょうゆう(1ページ) -->
+  <section id="panel-share" class="page" hidden>
+    <div class="page-head">
+      <button type="button" class="icon-btn page-back" aria-label="地図へ"><svg class="icon"><use href="#ic-back"/></svg></button>
+      <h2>きょうゆう</h2>
     </div>
-    <div class="panel-body">
-      <p class="note">このリンクを送った相手と、地点・写真がリアルタイムで共有されます。</p>
-      <button id="btn-share-native" class="wide-btn">LINE等で招待リンクを送る</button>
+    <div class="page-body">
+      <p class="note">リンクを送った相手と同じ地図になる。</p>
+      <button id="btn-share-native" class="wide-btn">LINEで送る</button>
       <button id="btn-copy-link" class="wide-btn ghost">リンクをコピー</button>
     </div>
   </section>
 
-  <!-- 設定 パネル -->
-  <section id="panel-settings" class="panel" hidden>
-    <div class="panel-head">
-      <h2>設定</h2>
-      <button class="icon-btn panel-close" aria-label="閉じる"><svg class="icon"><use href="#ic-close"/></svg></button>
+  <!-- せってい(1ページ) -->
+  <section id="panel-settings" class="page" hidden>
+    <div class="page-head">
+      <button type="button" class="icon-btn page-back" aria-label="地図へ"><svg class="icon"><use href="#ic-back"/></svg></button>
+      <h2>せってい</h2>
     </div>
-    <div class="panel-body">
+    <div class="page-body">
       <div class="field">
         <span class="field-label">基準地点</span>
         <ul id="ref-list" class="spot-list"></ul>
-        <p id="ref-empty" class="note">未登録(自宅・実家・駅などを下から追加)</p>
+        <p id="ref-empty" class="note">自宅・実家・駅などを下から追加</p>
       </div>
       <div class="field">
         <input type="text" id="ref-name" placeholder="名前(例: 実家)">
         <form id="ref-search-form" autocomplete="off" class="ref-search">
-          <input type="search" id="ref-search-input" placeholder="住所・地名で検索" enterkeyhint="search">
+          <input type="search" id="ref-search-input" placeholder="住所・地名" enterkeyhint="search">
           <button type="submit" class="ref-search-btn" aria-label="検索"><svg class="icon"><use href="#ic-search"/></svg></button>
         </form>
         <ul id="ref-results" class="ref-results" hidden></ul>
-        <button type="button" id="btn-ref-pick" class="wide-btn ghost">地図で選ぶ(ピンポイント)</button>
+        <button type="button" id="btn-ref-pick" class="wide-btn ghost">地図で選ぶ</button>
       </div>
       <div class="field section-divider">
-        <span class="field-label">表示パネルに出す項目</span>
+        <span class="field-label">表示する項目</span>
         <div id="enabled-toggles"></div>
       </div>
       <div class="field section-divider">
-        <span class="field-label">同期の状態</span>
+        <span class="field-label">同期</span>
         <div class="diag-row"><span>状態</span><b id="diag-state">-</b></div>
         <div class="diag-row"><span>地点数</span><b id="diag-count">-</b></div>
         <div class="diag-row"><span>共有ID</span><b id="diag-board" class="diag-id" title="タップでコピー">-</b></div>
-        <p class="note diag-note">3人とも同じ共有IDになっているか見比べてください。違っていれば、下に正しいIDを入れて参加します。</p>
+        <p class="note diag-note">全員同じIDか見比べる。違えば下に入れて参加。</p>
         <form id="join-form" autocomplete="off" class="ref-search">
-          <input type="text" id="join-input" placeholder="共有IDか招待リンクで参加">
+          <input type="text" id="join-input" placeholder="共有IDかリンク">
           <button type="submit" class="ref-search-btn" aria-label="参加">→</button>
         </form>
         <label class="carry-row"><input type="checkbox" id="join-carry" checked><span id="join-carry-label">この端末の地点も持ち込む</span></label>
@@ -179,10 +198,9 @@
   <!-- 写真から登録: 撮るか、撮ってある写真を選ぶか -->
   <section id="sheet-camera" class="sheet" hidden>
     <h2 class="sheet-title">写真から登録</h2>
-    <p class="note">撮った写真の場所にピンを立てて、土地情報を自動で入れます。</p>
-    <button type="button" id="btn-cam-shoot" class="wide-btn">カメラで撮る(今いる場所に登録)</button>
-    <button type="button" id="btn-cam-pick" class="wide-btn ghost">撮ってある写真を選ぶ(写真の位置情報を使う)</button>
-    <p class="note">iPhoneでは、カメラで撮った写真に位置情報が付かないため、撮った時点の現在地を使います。</p>
+    <button type="button" id="btn-cam-shoot" class="wide-btn">カメラで撮る</button>
+    <button type="button" id="btn-cam-pick" class="wide-btn ghost">撮った写真から選ぶ</button>
+    <p class="note">カメラで撮ると現在地、選ぶと写真の位置情報を使う。</p>
     <div class="sheet-actions">
       <button type="button" id="btn-cam-close" class="ghost">閉じる</button>
     </div>
@@ -201,7 +219,7 @@
       <div id="land-info" class="land-info"></div>
       <div class="field">
         <label for="spot-name" class="field-label">名前</label>
-        <input type="text" id="spot-name" placeholder="例: ◯◯町の南向き区画" required>
+        <input type="text" id="spot-name" placeholder="例: 南千木の角地" required>
       </div>
       <div class="field">
         <span class="field-label">ステータス</span>
@@ -217,10 +235,10 @@
       </div>
       <div class="field">
         <label for="spot-memo" class="field-label">メモ</label>
-        <textarea id="spot-memo" rows="3" placeholder="日当たり、坪数、価格、周辺環境など"></textarea>
+        <textarea id="spot-memo" rows="3"></textarea>
       </div>
       <div class="field">
-        <span class="field-label">接道方角(道路がどちら側にあるか・複数可)</span>
+        <span class="field-label">接道</span>
         <div id="spot-roads" class="chip-row">
           <button type="button" class="chip road-chip" data-road="north">北</button>
           <button type="button" class="chip road-chip" data-road="east">東</button>
@@ -234,7 +252,7 @@
           <input type="number" id="spot-area" inputmode="decimal" step="0.1" min="0" placeholder="例 45">
         </div>
         <div>
-          <label for="spot-price" class="field-label">売り値(万円)</label>
+          <label for="spot-price" class="field-label">売値(万円)</label>
           <input type="number" id="spot-price" inputmode="numeric" step="1" min="0" placeholder="例 1200">
         </div>
       </div>
@@ -249,12 +267,12 @@
         </div>
       </div>
       <div class="field">
-        <label for="spot-address" class="field-label">住所(自動取得を直せます)</label>
-        <input type="text" id="spot-address" placeholder="番地まで分かれば追記" autocomplete="off">
+        <label for="spot-address" class="field-label">住所</label>
+        <input type="text" id="spot-address" placeholder="番地まで" autocomplete="off">
       </div>
       <div class="field">
-        <label for="spot-url" class="field-label">物件ページURL</label>
-        <input type="url" id="spot-url" placeholder="https://suumo.jp/... など掲載ページ" inputmode="url">
+        <label for="spot-url" class="field-label">物件URL</label>
+        <input type="url" id="spot-url" placeholder="https://" inputmode="url">
       </div>
       <div class="field">
         <span class="field-label">写真</span>
@@ -281,14 +299,14 @@
 
   <!-- 初めてこの端末で開いたとき(新しいボードを作ったとき)の案内 -->
   <section id="sheet-board" class="sheet" hidden>
-    <h2 class="sheet-title">この端末用に新しい地図を作りました</h2>
-    <p class="note">すでに家族で使っている地図がある場合は、その招待リンク(または共有ID)を貼って参加してください。参加しないと、ここでの登録は他の人に見えません。</p>
+    <h2 class="sheet-title">新しい地図</h2>
+    <p class="note">家族の地図があるなら、そのリンクを貼って参加。</p>
     <form id="board-join-form" autocomplete="off" class="ref-search">
       <input type="text" id="board-join-input" placeholder="招待リンクを貼り付け">
       <button type="submit" class="ref-search-btn" aria-label="参加">→</button>
     </form>
     <div class="sheet-actions">
-      <button type="button" id="btn-board-new" class="primary">新しい地図のまま使う</button>
+      <button type="button" id="btn-board-new" class="primary">このまま使う</button>
     </div>
   </section>
 

@@ -18,10 +18,10 @@ await page.route('**/overpass-api.de/**', (r) => r.fulfill({ contentType: 'appli
 await page.addInitScript(() => localStorage.setItem('tasobow.landscout.view.v1', JSON.stringify({ lat: 36.3033, lng: 139.2087, zoom: 14 })));
 
 await page.goto('http://localhost:8776/index.html?emu=1', { waitUntil: 'domcontentloaded' });
-await page.waitForFunction(() => document.querySelector('#sync-state').textContent === '同期済み', { timeout: 20000 });
+await page.waitForFunction(() => document.body.dataset.sync === 'synced', { timeout: 20000 });
 
 // (1) 駅名検索: 「本庄駅」で駅そのものが候補に出るか
-await page.click('#btn-settings');
+await page.click('#btn-menu'); await page.click('#btn-settings');
 await page.fill('#ref-search-input', '本庄駅');
 await page.press('#ref-search-input', 'Enter');
 await page.waitForSelector('#ref-results li');
@@ -46,7 +46,7 @@ const ref = await page.evaluate(async () => (await import('./js/data.js')).getSp
 console.log('保存座標 =', ref.lat, ref.lng, '/ 名前 =', ref.name);
 
 // (3) 通常の地点登録が壊れていないか
-await page.click('#panel-settings .panel-close');
+await page.click('#panel-settings .page-back');
 await page.click('#map', { position: { x: 150, y: 500 } });
 await page.waitForSelector('#confirm-bar:not([hidden])');
 console.log('通常時の確認文 =', await page.locator('#confirm-text').textContent(), '/ ボタン =', await page.locator('#btn-confirm-add').textContent());
@@ -69,7 +69,7 @@ console.log('距離表示 =', (await page.locator('.popup-dists').textContent())
 // (5) 「やめる」でモードが解除されるか
 await page.evaluate(() => document.querySelector('#btn-detail-close').click());
 await page.waitForTimeout(400);
-await page.click('#btn-settings');
+await page.click('#btn-menu'); await page.click('#btn-settings');
 await page.fill('#ref-name', 'テスト');
 await page.click('#btn-ref-pick');
 await page.waitForSelector('#pick-hint:not([hidden])');

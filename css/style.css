@@ -3,6 +3,8 @@
 :root {
   --brand: #1a6b52;
   --brand-dark: #12503d;
+  --bar: #3d434b;      /* ヘッダー。本文より一段濃いグレー */
+  --bar-dark: #2c3138;
   --danger: #c93b3b;
   --ink: #222;
   --panel-bg: #fff;
@@ -17,7 +19,7 @@
 html, body {
   margin: 0;
   height: 100%;
-  font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
+  font-family: "Zen Maru Gothic", -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", sans-serif;
   color: var(--ink);
 }
 
@@ -47,13 +49,20 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 12px;
-  background: var(--brand);
+  padding: 0 8px;
+  background: var(--bar);
   color: #fff;
   z-index: 1000;
 }
 
-.topbar h1 { font-size: 16px; margin: 0; font-weight: 600; }
+.topbar h1 {
+  flex: 1;
+  font-family: "Hachi Maru Pop", "Zen Maru Gothic", sans-serif;
+  font-size: 21px;
+  margin: 0 0 0 4px;
+  font-weight: 400;
+  letter-spacing: 0.04em;
+}
 .topbar-actions { display: flex; gap: 4px; }
 
 /* トップバーのアイコンボタン */
@@ -81,13 +90,13 @@ html, body {
   color: inherit;
   border-radius: 8px;
 }
-.topbar .icon-btn:active { background: var(--brand-dark); }
+.topbar .icon-btn:active { background: var(--bar-dark); }
 
 /* ---- 地域検索 ---- */
 
 .searchbar {
   position: fixed;
-  top: 64px;
+  top: 66px;
   left: 12px;
   width: min(360px, calc(100vw - 24px));
   z-index: 950;
@@ -106,8 +115,8 @@ html, body {
 
 /* 普段は虫眼鏡の丸ボタンだけ(右下のFABと同じ白丸) */
 .search-open {
-  width: 44px;
-  height: 44px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: none;
   background: #fff;
@@ -163,8 +172,8 @@ html, body {
 
 .fab-stack {
   position: fixed;
-  right: 14px;
-  bottom: 26px;
+  right: 12px;
+  bottom: calc(12px + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -187,7 +196,7 @@ html, body {
 .fab .icon { width: 24px; height: 24px; }
 
 .fab-primary { background: var(--brand); color: #fff; }
-.fab-primary .icon { width: 28px; height: 28px; }
+.fab-primary .icon { width: 24px; height: 24px; }
 .fab.active { outline: 3px solid #ffb43a; }
 
 /* ---- パネル ---- */
@@ -231,7 +240,93 @@ html, body {
 .note { font-size: 12px; color: #777; line-height: 1.7; }
 .note a { color: var(--brand); }
 
-/* ---- 地点一覧 ---- */
+/* ---- ページ(メニュー・一覧・共有・設定は全画面の1ページ) ---- */
+
+.page {
+  position: fixed;
+  inset: 0;
+  background: #fff;
+  z-index: 1300;
+  display: flex;
+  flex-direction: column;
+}
+.page-head {
+  height: 56px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 8px;
+  background: var(--bar);
+  color: #fff;
+}
+.page-head h2 {
+  margin: 0;
+  font-family: "Hachi Maru Pop", "Zen Maru Gothic", sans-serif;
+  font-size: 19px;
+  font-weight: 400;
+}
+.page-head .icon-btn { color: #fff; }
+.page-body { flex: 1; overflow-y: auto; padding: 12px 14px calc(24px + env(safe-area-inset-bottom, 0px)); }
+
+.menu-body { padding-top: 8px; }
+.menu-item {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 8px;
+  border: none;
+  border-bottom: 1px solid #eee;
+  background: none;
+  font: inherit;
+  font-size: 17px;
+  color: var(--ink);
+  cursor: pointer;
+  text-align: left;
+}
+.menu-item span { flex: 1; }
+.menu-item .icon { width: 22px; height: 22px; color: #555; }
+.menu-item .chev { width: 18px; height: 18px; color: #bbb; }
+
+/* ---- とち一覧 ---- */
+
+.sort-chips { margin-bottom: 10px; }
+.land-list { list-style: none; margin: 0; padding: 0; }
+.land-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 2px;
+  border-bottom: 1px solid #eee;
+  cursor: pointer;
+  background: #fff;
+  touch-action: pan-y;
+}
+.land-row .dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.land-main { flex: 1; min-width: 0; }
+.land-name { font-size: 15px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.land-sub { font-size: 12px; color: #777; margin-top: 2px; }
+.land-sub .warn { color: var(--danger); font-weight: 700; }
+.land-stars { color: #ffb43a; font-size: 13px; flex-shrink: 0; letter-spacing: -1px; }
+.grip {
+  width: 28px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  color: #c5c5c5;
+  flex-shrink: 0;
+  touch-action: none; /* 縦スクロールを奪ってドラッグに使う */
+  cursor: grab;
+}
+.grip .icon { width: 18px; height: 18px; fill: currentColor; stroke: none; }
+.land-row.dragging {
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  opacity: 0.95;
+  z-index: 5;
+}
+.land-row.placeholder { background: #f3f4f6; border-bottom: none; border-radius: 10px; }
+
+/* ---- 地点一覧(基準地点・ゴミ箱で使う旧スタイル) ---- */
 
 .spot-list { list-style: none; margin: 0; padding: 0; }
 .spot-list li {
@@ -754,7 +849,7 @@ html, body {
 
 .compass {
   position: fixed;
-  top: 122px;
+  top: 66px;
   right: 12px;
   width: 40px;
   height: 40px;

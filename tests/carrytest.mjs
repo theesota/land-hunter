@@ -11,7 +11,7 @@ async function open(ctx, url) {
   await page.route('**/overpass-api.de/**', (r) => r.fulfill({ contentType: 'application/json', body: '{"elements":[]}' }));
   await page.addInitScript(() => localStorage.setItem('tasobow.landscout.view.v1', JSON.stringify({ lat: 36.3033, lng: 139.2087, zoom: 16 })));
   await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => document.querySelector('#sync-state').textContent === '同期済み', { timeout: 20000 });
+  await page.waitForFunction(() => document.body.dataset.sync === 'synced', { timeout: 20000 });
   return page;
 }
 async function addSpot(page, x, y, name) {
@@ -23,7 +23,7 @@ async function addSpot(page, x, y, name) {
   await page.click('#spot-form button[type=submit]');
   await page.waitForSelector('#sheet-spot', { state: 'hidden' });
 }
-const names = (page) => page.$$eval('#spot-list li .spot-name', (els) => els.map((e) => e.textContent));
+const names = (page) => page.$$eval('#spot-list .land-name', (els) => els.map((e) => e.textContent));
 
 // スマホ: 自分のボードに1件
 const phoneCtx = await browser.newContext({ viewport: { width: 390, height: 780 } });
@@ -39,24 +39,24 @@ await pc.click('#btn-board-new');
 await addSpot(pc, 500, 400, 'PCの土地1');
 await addSpot(pc, 560, 460, 'PCの土地2');
 await pc.goto(invite, { waitUntil: 'domcontentloaded' });
-await pc.waitForFunction(() => document.querySelector('#sync-state').textContent === '同期済み', { timeout: 20000 });
+await pc.waitForFunction(() => document.body.dataset.sync === 'synced', { timeout: 20000 });
 await pc.waitForTimeout(3000);
-await pc.click('#btn-list');
+await pc.click('#btn-menu'); await pc.click('#btn-list');
 const pcNames = await names(pc);
 console.log('PC(招待リンクで開いた後):', pcNames);
 for (const n of ['スマホの土地', 'PCの土地1', 'PCの土地2']) if (!pcNames.includes(n)) fails.push('PCで見えない: ' + n);
 
 await phone.waitForTimeout(2000);
-await phone.click('#btn-list');
+await phone.click('#btn-menu'); await phone.click('#btn-list');
 const phNames = await names(phone);
 console.log('スマホ:', phNames);
 for (const n of ['PCの土地1', 'PCの土地2']) if (!phNames.includes(n)) fails.push('スマホに届かない: ' + n);
 
 // 2回目以降のリロードで増殖しない
 await pc.reload({ waitUntil: 'domcontentloaded' });
-await pc.waitForFunction(() => document.querySelector('#sync-state').textContent === '同期済み', { timeout: 20000 });
+await pc.waitForFunction(() => document.body.dataset.sync === 'synced', { timeout: 20000 });
 await pc.waitForTimeout(2000);
-await pc.click('#btn-list');
+await pc.click('#btn-menu'); await pc.click('#btn-list');
 const again = await names(pc);
 if (again.length !== 3) fails.push('リロードで件数が変わった: ' + again.length);
 

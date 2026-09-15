@@ -6,6 +6,7 @@ const SPOTS_KEY = 'tasobow.landscout.spots.v1';
 const VIEW_KEY = 'tasobow.landscout.view.v1';
 const BASEMAP_KEY = 'tasobow.landscout.basemap.v1';
 const ENABLED_KEY = 'tasobow.landhunter.enabled.v1';
+const SORT_KEY = 'tasobow.landhunter.sort.v1';
 
 function genId() {
   return crypto.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
@@ -36,7 +37,7 @@ export function isValidSpot(s) {
     && typeof s.name === 'string';
 }
 
-export function createSpot({ lat, lng, name, status, rating, memo, url, info, roads, address, area, price, water, sewer }) {
+export function createSpot({ lat, lng, name, status, rating, memo, url, info, roads, address, area, price, water, sewer, order }) {
   const now = Date.now();
   return {
     id: genId(),
@@ -54,6 +55,7 @@ export function createSpot({ lat, lng, name, status, rating, memo, url, info, ro
     price: price || null, // 売り値(万円)
     water: water || '',   // 上水道 '' | 'yes' | 'no'
     sewer: sewer || '',   // 下水道 '' | 'yes' | 'no'
+    order: order ?? null, // 一覧の手動並び(小さいほど上)。共有される
     createdAt: now,
     updatedAt: now,
   };
@@ -107,4 +109,12 @@ export function loadEnabledLayers() {
 
 export function saveEnabledLayers(ids) {
   localStorage.setItem(ENABLED_KEY, JSON.stringify(ids));
+}
+
+// 一覧の並び順(端末ごと)
+export function loadSort() {
+  return localStorage.getItem(SORT_KEY) || 'star';
+}
+export function saveSort(key) {
+  localStorage.setItem(SORT_KEY, key);
 }

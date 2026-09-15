@@ -15,11 +15,11 @@ async function open(url) {
   await page.route('**/overpass-api.de/**', (r) => r.fulfill({ contentType: 'application/json', body: '{"elements":[]}' }));
   await page.addInitScript(() => localStorage.setItem('tasobow.landscout.view.v1', JSON.stringify({ lat: 36.3033, lng: 139.2087, zoom: 16 })));
   await page.goto(url, { waitUntil: 'domcontentloaded' });
-  await page.waitForFunction(() => document.querySelector('#sync-state').textContent === '同期済み', { timeout: 20000 });
+  await page.waitForFunction(() => document.body.dataset.sync === 'synced', { timeout: 20000 });
   return page;
 }
-const openPanel = async (page, sel, btn) => { if (await page.$eval(sel, (e) => e.hidden)) await page.click(btn); };
-const names = (page) => page.$$eval('#spot-list li .spot-name', (els) => els.map((e) => e.textContent));
+const openPanel = async (page, sel, btn) => { if (await page.$eval(sel, (e) => e.hidden)) { await page.evaluate(() => document.querySelectorAll('.page').forEach((p) => (p.hidden = true))); await page.click('#btn-menu'); await page.click(btn); } };
+const names = (page) => page.$$eval('#spot-list .land-name', (els) => els.map((e) => e.textContent));
 const trashNames = (page) => page.$$eval('#trash-list li .spot-name', (els) => els.map((e) => e.textContent));
 
 const a = await open('http://localhost:8776/index.html?emu=1');
@@ -44,7 +44,7 @@ if (!(await names(b)).includes('消す土地')) fails.push('B側に地点が来�
 
 // A: 一覧から開いて削除
 await openPanel(a, '#panel-list', '#btn-list');
-await a.click('#spot-list li');
+await a.click('#spot-list .land-row');
 await a.waitForTimeout(500);
 await a.click('.leaflet-marker-icon');
 await a.waitForSelector('.popup-edit');
@@ -78,7 +78,7 @@ if (!(await names(a)).includes('消す土地')) fails.push('A側に戻ってき�
 console.log('戻した後 A:', await names(a), 'B:', await names(b));
 
 // A: もう一度消して、完全に削除 → 写真も消える
-await a.click('#spot-list li');
+await a.click('#spot-list .land-row');
 await a.waitForTimeout(500);
 await a.click('.leaflet-marker-icon');
 await a.waitForSelector('.popup-edit');

@@ -41,7 +41,7 @@ async function addSpot(page, name, pos, withPhoto = false) {
 // --- ソータ: 新しいボードを作り、写真付きで登録 ---
 const sota = await newDevice('ソータ');
 await sota.goto(BASE, { waitUntil: 'domcontentloaded' });
-await sota.waitForFunction(() => document.querySelector('#sync-state').textContent === '同期済み', { timeout: 20000 });
+await sota.waitForFunction(() => document.body.dataset.sync === 'synced', { timeout: 20000 });
 await addSpot(sota, '写真付き候補', { x: 150, y: 400 }, true);
 await sota.waitForSelector('.spot-pin', { timeout: 10000 });
 const invite = await sota.evaluate(async () => (await import('./js/data.js')).getInviteUrl());
@@ -52,7 +52,7 @@ const miho = await newDevice('美穂');
 const haha = await newDevice('お義母さん');
 for (const [p, name] of [[miho, '美穂'], [haha, 'お義母さん']]) {
   await p.goto(invite.replace('#b=', '?emu=1#b='), { waitUntil: 'domcontentloaded' });
-  await p.waitForFunction(() => document.querySelector('#sync-state').textContent === '同期済み', { timeout: 20000 });
+  await p.waitForFunction(() => document.body.dataset.sync === 'synced', { timeout: 20000 });
   await p.waitForSelector('.spot-pin', { timeout: 15000 });
   console.log(`${name}: 参加後のピン =`, await p.locator('.spot-pin').count());
 }
@@ -79,10 +79,10 @@ for (const [p, name] of [[sota, 'ソータ'], [miho, '美穂'], [haha, 'お義�
 // --- 未設定(=Firebase未接続)でもローカルで動くか ---
 const solo = await newDevice('未設定', { configured: false });
 await solo.goto('http://localhost:8776/index.html', { waitUntil: 'domcontentloaded' });
-await solo.waitForFunction(() => document.querySelector('#sync-state').textContent !== '…', { timeout: 15000 });
+await solo.waitForFunction(() => document.body.dataset.sync !== '…', { timeout: 15000 });
 await addSpot(solo, 'ローカル候補', { x: 195, y: 400 });
 await solo.waitForSelector('.spot-pin', { timeout: 10000 });
-console.log('未設定時: バッジ =', await solo.locator('#sync-state').textContent(), '/ 保存できたピン =', await solo.locator('.spot-pin').count());
+console.log('未設定時: バッジ =', await solo.evaluate(() => document.body.dataset.sync), '/ 保存できたピン =', await solo.locator('.spot-pin').count());
 
 await browser.close();
 console.log(errors.length ? 'ERRORS:\n' + errors.join('\n') : 'NO JS ERRORS');

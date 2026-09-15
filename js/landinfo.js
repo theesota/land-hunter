@@ -156,7 +156,7 @@ export function buildableText(info, area) {
   const f = (t) => `${t.toFixed(1)}坪(${Math.round(t * TSUBO_M2)}㎡)`;
   return `1階 最大${f(floor1)} / 延床 最大${f(total)}`;
 }
-export const BUILDABLE_NOTE = '延床は前面道路の幅で下がることがある(住居系で4m道路なら容積160%が上限)';
+export const BUILDABLE_NOTE = '延床は道路幅で下がることあり(4m道路なら容積160%まで)';
 
 // ---- ハザード(タイルの色を読む) ----
 
@@ -331,14 +331,14 @@ export function collectLandInfo(lat, lng, onUpdate) {
     hazardsAt(lat, lng).then((v) => {
       if (v !== null) {
         info.hz = v;
-        info.hazard = v.length ? v.map((h) => h.t).join('、') : '主要ハザード該当なし';
+        info.hazard = v.length ? v.map((h) => h.t).join('、') : 'ハザードなし';
       }
     }),
     nearestStationAt(lat, lng).then((v) => {
       if (v) info.station = `${v.name}駅(${v.line}) 徒歩約${v.walkMin}分・車約${carMinutes(v.meters)}分`;
     }),
     facilitiesAt(lat, lng).then((v) => {
-      if (v !== null) info.facility = v.length ? v.join(' / ') : '徒歩15分圏に主要店舗なし';
+      if (v !== null) info.facility = v.length ? v.join(' / ') : '徒歩15分圏に店なし';
     }),
   ].map((p) => p.catch(() => {}).then(() => onUpdate && onUpdate(info)));
   return Promise.all(tasks).then(() => info);
@@ -353,8 +353,8 @@ export function hazardHtml(info) {
       return `<span class="hz-item"><i class="hz-swatch" style="background:${escapeText(h.c)}"></i>${escapeText(h.t)}${note}</span>`;
     }).join('');
   }
-  if (info.hazard === '主要ハザード該当なし') {
-    return '<span class="hz-item hz-safe">✓ 主要ハザード該当なし</span>';
+  if (info.hazard === '主要ハザード該当なし' || info.hazard === 'ハザードなし') {
+    return '<span class="hz-item hz-safe">✓ ハザードなし</span>';
   }
   return info.hazard ? escapeText(info.hazard) : '-';
 }
@@ -378,7 +378,7 @@ export function facilityLines(facility) {
 export function zoneHtml(zone) {
   if (!zone) return '';
   return zone === '市街化調整区域'
-    ? '<span class="zone-warn">市街化調整区域</span><small class="hz-note">原則、住宅は建てられない。例外の可否は市に確認</small>'
+    ? '<span class="zone-warn">市街化調整区域</span><small class="hz-note">原則、家は建てられない。例外は市に確認</small>'
     : escapeText(zone);
 }
 

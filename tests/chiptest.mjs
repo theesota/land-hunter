@@ -31,13 +31,13 @@ console.log('学区ONで学校名ラベル =', await page.locator('.school-label
 
 // 設定で「使う項目」を絞る(津波・高潮・地すべりを外す)
 await page.click('#panel-layers .panel-close');
-await page.click('#btn-settings');
+await page.click('#btn-menu'); await page.click('#btn-settings');
 await page.waitForSelector('#enabled-toggles input');
 console.log('設定の項目数 =', await page.locator('#enabled-toggles input').count());
 for (const name of ['地すべり', '津波', '高潮']) {
   await page.click(`#enabled-toggles label:has-text("${name}") input`);
 }
-await page.click('#panel-settings .panel-close');
+await page.click('#panel-settings .page-back');
 await page.click('#btn-layers');
 const chips = await page.locator('#layer-chips .mini-chip').allTextContents();
 console.log('絞り込み後のチップ =', chips);

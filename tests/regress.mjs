@@ -19,10 +19,10 @@ await page.route('**/overpass-api.de/**', (r) => r.fulfill({ contentType: 'appli
 await page.addInitScript(() => localStorage.setItem('tasobow.landscout.view.v1', JSON.stringify({ lat: 36.3033, lng: 139.2087, zoom: 16 })));
 
 await page.goto('http://localhost:8776/index.html?emu=1', { waitUntil: 'domcontentloaded' });
-await page.waitForFunction(() => document.querySelector('#sync-state').textContent === '同期済み', { timeout: 20000 });
+await page.waitForFunction(() => document.body.dataset.sync === 'synced', { timeout: 20000 });
 
 // 設定: 基準地点を住所検索で登録
-await page.click('#btn-settings');
+await page.click('#btn-menu'); await page.click('#btn-settings');
 await page.fill('#ref-name', '実家');
 await page.fill('#ref-search-input', '宮子町');
 await page.press('#ref-search-input', 'Enter');
@@ -30,7 +30,7 @@ await page.waitForSelector('#ref-results li');
 await page.click('#ref-results li');
 await page.waitForFunction(() => document.querySelectorAll('#ref-list li').length === 1, { timeout: 10000 });
 console.log('基準地点 =', (await page.locator('#ref-list li .spot-name').textContent()));
-await page.click('#panel-settings .panel-close');
+await page.click('#panel-settings .page-back');
 
 // 学区レイヤ
 await page.click('#btn-layers');
@@ -63,9 +63,9 @@ await page.waitForFunction(() => document.querySelectorAll('.spot-pin').length =
 console.log('登録完了。仮マーカーは消えたか =', (await page.locator('.pending-pin').count()) === 0);
 
 // 一覧
-await page.click('#btn-list');
-console.log('一覧 =', (await page.locator('#spot-list li').allTextContents()).map((t) => t.trim()));
-await page.click('#panel-list .panel-close');
+await page.click('#btn-menu'); await page.click('#btn-list');
+console.log('一覧 =', (await page.locator('#spot-list .land-row').allTextContents()).map((t) => t.trim()));
+await page.click('#panel-list .page-back');
 
 // ポップアップの中身
 await page.evaluate(() => {
