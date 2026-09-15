@@ -60,7 +60,7 @@ console.log('通常登録も動作 = ピン', await page.locator('.spot-pin').co
 // (4) 候補地から実家までの距離が出るか
 await page.evaluate(() => {
   const pins = [...document.querySelectorAll('.spot-pin')];
-  const vis = pins.find((el) => { const r = el.getBoundingClientRect(); return r.top > 400 && r.top < 700; });
+  const vis = pins.find((el) => { const r = el.getBoundingClientRect(); return r.top > 60 && r.top < 700; });
   vis.dispatchEvent(new MouseEvent('click', { bubbles: true }));
 });
 await page.waitForSelector('.popup-dists', { timeout: 10000 });
