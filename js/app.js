@@ -1,6 +1,6 @@
 // UIの結線。地点データの出し入れはすべてdata.js経由(クラウド同期/ローカルの違いを吸収)。
 
-import { HAZARD_LAYERS, SCHOOL_LAYERS, ZONE_LAYERS, STATUSES, statusById, GEOCODER_URL, LISTINGS_LINK } from './config.js';
+import { HAZARD_LAYERS, SCHOOL_LAYERS, ZONE_LAYERS, STATUSES, BUILD, statusById, GEOCODER_URL, LISTINGS_LINK } from './config.js';
 import { collectLandInfo, hazardHtml, zoneHtml, buildableText, BUILDABLE_NOTE, DEPTH_COLORS, searchStations, schoolLines, facilityLines } from './landinfo.js';
 import { createSpot, loadEnabledLayers, saveEnabledLayers, loadSort, saveSort } from './store.js';
 import {
@@ -1347,6 +1347,7 @@ function renderDiagnostics() {
   $('#diag-state').textContent = state;
   $('#diag-count').textContent = `${spots.length}件`;
   $('#diag-board').textContent = getBoardId() || '-';
+  $('#diag-build').textContent = BUILD;
 }
 
 // 初回起動(前回の表示位置がない)だけ、地図の初期位置を決める。

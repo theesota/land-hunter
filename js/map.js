@@ -197,7 +197,6 @@ export class MapView {
     const gmap = `https://www.google.com/maps?q=${spot.lat},${spot.lng}`;
     // Google公式のMaps URLs形式。その地点のストリートビューを直接開く。
     const streetview = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${spot.lat},${spot.lng}`;
-    const hazard = `https://disaportal.gsi.go.jp/maps/index.html?ll=${spot.lat},${spot.lng}&z=16`;
     const memo = spot.memo ? `<p class="popup-memo">${escapeHtml(spot.memo)}</p>` : '';
     const roads = (spot.roads || []).map((d) => ROAD_LABELS[d]).filter(Boolean);
     const rowsHtml = landInfoRows(spot.info, { address: spot.address, schoolKinds: this.schoolKinds, roads, deal: spot });
@@ -228,9 +227,6 @@ export class MapView {
         <div class="popup-links">
           <a href="${streetview}" target="_blank" rel="noopener">ストリートビュー</a>
           <a href="${gmap}" target="_blank" rel="noopener">Googleマップ</a>
-        </div>
-        <div class="popup-links">
-          <a href="${hazard}" target="_blank" rel="noopener">重ねるハザードマップ</a>
         </div>
         <button type="button" class="popup-edit">編集</button>
       </div>`;
