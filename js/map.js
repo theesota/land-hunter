@@ -177,11 +177,12 @@ export class MapView {
   }
 
   // 距離+徒歩/車の目安。徒歩は30分(2.4km)を超えたら現実的でないので省く。
-  _distanceLabel(a, b) {
+  // 距離と時間を別々に返す(詳細では列を揃えて並べる)
+  _distanceParts(a, b) {
     const d = this.map.distance([a.lat, a.lng], [b.lat, b.lng]);
     const dist = d < 1000 ? `${Math.round(d)}m` : `${(d / 1000).toFixed(1)}km`;
-    const walk = d <= 2400 ? `徒歩約${Math.ceil(d / 80)}分・` : '';
-    return `${dist}(${walk}車約${carMinutes(d)}分)`;
+    const walk = d <= 2400 ? `徒歩${Math.ceil(d / 80)}分・` : '';
+    return { dist, time: `${walk}車${carMinutes(d)}分` };
   }
 
   // 設定で表示ONにしている学区の種類('elementary'/'junior')。ポップアップの学区行を絞る。
@@ -203,11 +204,13 @@ export class MapView {
     const infoHtml = rowsHtml ? `<div class="popup-info">${rowsHtml}</div>` : '';
     // 基準地点(自宅・駅など)までの直線距離。基準地点自身のポップアップには出さない。
     const refs = (this.spots || []).filter((s) => s.status === 'reference' && s.id !== spot.id);
+    // 基準地点ごとに「名前 | 距離 | 時間 | 車ルート」を列で揃える
     const dists = spot.status !== 'reference' && refs.length
-      ? `<div class="popup-dists">${refs.map((r) => {
+      ? `<div class="popup-dists dist-grid">${refs.map((r) => {
         const drive = `https://www.google.com/maps/dir/?api=1&origin=${r.lat},${r.lng}&destination=${spot.lat},${spot.lng}&travelmode=driving`;
-        return `${escapeHtml(r.name)}まで ${this._distanceLabel(spot, r)}<a href="${drive}" target="_blank" rel="noopener" class="popup-drive">車ルート</a>`;
-      }).join('<br>')}</div>` : '';
+        const { dist, time } = this._distanceParts(spot, r);
+        return `<span class="d-name">${escapeHtml(r.name)}</span><span class="d-km">${dist}</span><span class="d-time">${time}</span><a href="${drive}" target="_blank" rel="noopener" class="popup-drive">車ルート</a>`;
+      }).join('')}</div>` : '';
     const listing = spot.url
       ? `<a href="${escapeHtml(spot.url)}" target="_blank" rel="noopener" class="popup-listing">物件ページを開く</a>` : '';
     return `
