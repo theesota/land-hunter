@@ -51,9 +51,27 @@ function keepHash(id) {
 }
 
 // URLの招待リンク > 前回のボード > 新規作成 の優先順で決める
+// URLハッシュは「#b=ボードID&s=地点ID」。s は「この土地だけ送る」共有リンク用
+function parseHash() {
+  const params = new URLSearchParams(location.hash.replace(/^#/, ''));
+  return { board: (params.get('b') || '').trim(), spot: (params.get('s') || '').trim() };
+}
+
+let deepLinkSpot = parseHash().spot || null;
+// 共有リンクで指定された地点IDを一度だけ返す
+export function takeDeepLinkSpot() {
+  const id = deepLinkSpot;
+  deepLinkSpot = null;
+  return id;
+}
+
+// 地点1件の共有リンク。開くと同じボードに入り、その地点の詳細が開く
+export function getSpotUrl(spotId) {
+  return `${getInviteUrl()}&s=${encodeURIComponent(spotId)}`;
+}
+
 function resolveBoardId() {
-  const fromHash = location.hash.startsWith(HASH_PREFIX)
-    ? location.hash.slice(HASH_PREFIX.length).trim() : '';
+  const fromHash = parseHash().board;
   if (fromHash && fromHash.length >= 20) {
     // 別ボードで使っていた端末が招待リンクを開いたとき、手元の地点をそのまま捨てない。
     // 混ざったら消せばいいが、消えた地点は戻らないので「持ち込む」側に倒す。
@@ -80,8 +98,13 @@ function resolveBoardId() {
 // 開いているタブのアドレスバーに招待リンクを貼ると、ハッシュだけ変わって再読み込みされない。
 // ボードが変わるなら読み込み直して、通常の参加(持ち込み含む)と同じ道を通す。
 window.addEventListener('hashchange', () => {
-  const next = location.hash.startsWith(HASH_PREFIX) ? location.hash.slice(HASH_PREFIX.length).trim() : '';
-  if (next && next.length >= 20 && next !== boardId) location.reload();
+  const { board, spot } = parseHash();
+  if (board && board.length >= 20 && board !== boardId) { location.reload(); return; }
+  if (spot) {
+    // 同じボード内の地点リンク。読み直さずにその地点を開く
+    keepHash(boardId);
+    window.dispatchEvent(new CustomEvent('deeplink-spot', { detail: spot }));
+  }
 });
 
 // onSpots: 地点が変わるたびに呼ばれる(自分の編集でも他の人の編集でも)
@@ -170,7 +193,7 @@ async function rescueLocalSpots(list) {
 // (別ボードで貯めてしまった分を、正しいボードへ移すための道)
 export function switchBoard(idOrUrl, { carry = false } = {}) {
   const raw = String(idOrUrl).trim();
-  const id = raw.includes(HASH_PREFIX) ? raw.split(HASH_PREFIX)[1].trim() : raw;
+  const id = raw.includes(HASH_PREFIX) ? raw.split(HASH_PREFIX)[1].split('&')[0].trim() : raw;
   if (!id || id.length < 20) return false;
   if (carry && spots.length > 0) {
     localStorage.setItem(CARRY_KEY, JSON.stringify(spots));

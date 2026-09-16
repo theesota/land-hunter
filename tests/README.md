@@ -23,6 +23,8 @@ node searchtest.mjs   # 緯度経度・URL・郵便番号付き住所の検索
 node cameratest.mjs   # カメラモード(EXIF/現在地/地図タップ)
 node photoslidetest.mjs  # 写真のスライド表示・虫眼鏡だけの検索
 node uishot.mjs       # 新UI(配置・一覧の並び・ドラッグ)
+node spotsharetest.mjs # 土地1件の共有リンク(要エミュレータ)
+node editshot.mjs     # 登録シートを開いたときにピンが見える
 node zonetest.mjs     # 区域区分・用途地域・坪数/売り値/上下水道・建てられる目安
 node coordunit.mjs exifunit.mjs  # 単体(ブラウザ不要)
 ```

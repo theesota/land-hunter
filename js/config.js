@@ -114,7 +114,7 @@ export const TOKUTEI_FILE = 'data/zone/isesaki_tokutei.geojson';
 export const DEFAULT_BASEMAP = 'bright';
 
 // 反映確認用の版。deployのたびに日付+連番で上げる(設定の同期欄に出る)
-export const BUILD = '2026-09-16d';
+export const BUILD = '2026-09-16e';
 
 // 地域検索(国土地理院 住所検索API)。地名・駅名・施設名・住所を引ける。キー不要。
 export const GEOCODER_URL = 'https://msearch.gsi.go.jp/address-search/AddressSearch?q=';

@@ -409,7 +409,13 @@ html, body {
   position: absolute;
   top: 8px; right: 8px;
 }
+.detail-share {
+  position: absolute;
+  top: 8px; right: 52px;
+  color: var(--brand);
+}
 .sheet-detail .popup { min-width: 0; font-size: 15px; padding-right: 30px; }
+.sheet-detail .popup > strong { display: block; padding-right: 60px; }
 .sheet-detail .popup strong { font-size: 18px; }
 .sheet-detail .popup-meta { margin: 10px 0 12px; }
 .sheet-detail .popup-info { font-size: 15px; line-height: 1.55; }

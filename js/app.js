@@ -4,7 +4,7 @@ import { HAZARD_LAYERS, SCHOOL_LAYERS, ZONE_LAYERS, STATUSES, BUILD, statusById,
 import { collectLandInfo, hazardHtml, zoneHtml, buildableText, BUILDABLE_NOTE, DEPTH_COLORS, searchStations, schoolLines, facilityLines } from './landinfo.js';
 import { createSpot, loadEnabledLayers, saveEnabledLayers, loadSort, saveSort } from './store.js';
 import {
-  initData, getSpots, getMode, getInviteUrl, getBoardId, getStatus, flushPending, switchBoard,
+  initData, getSpots, getMode, getInviteUrl, getBoardId, getStatus, flushPending, switchBoard, takeDeepLinkSpot, getSpotUrl,
   saveSpot, deleteSpot, restoreSpot, purgeSpot, listPhotos, addPhoto, deletePhoto, compressImage,
 } from './data.js';
 import { MapView } from './map.js';
@@ -212,6 +212,37 @@ function closeDetail() {
 }
 
 $('#btn-detail-close').addEventListener('click', closeDetail);
+
+// この土地だけを送る。開いた人は同じボードに入り、この地点の詳細が開く
+$('#btn-detail-share').addEventListener('click', async () => {
+  const spot = spots.find((s) => s.id === detailSpotId);
+  if (!spot) return;
+  await ensureSynced();
+  const url = getSpotUrl(spot.id);
+  const bits = [];
+  if (spot.area > 0) bits.push(`${spot.area}坪`);
+  if (spot.price > 0) bits.push(`${Number(spot.price).toLocaleString()}万`);
+  const addr = spot.address || (spot.info && spot.info.address) || '';
+  const text = [spot.name, bits.join(' '), addr].filter(Boolean).join('\n');
+  if (navigator.share) {
+    navigator.share({ title: spot.name, text, url }).catch(() => {});
+  } else {
+    try { await navigator.clipboard.writeText(`${text}\n${url}`); showToast('リンクをコピー'); } catch { prompt('このリンクを送る', url); }
+  }
+});
+
+// 共有リンクで来た地点は、地点が揃ったら開く
+let deepLinkSpotId = takeDeepLinkSpot();
+let deepLinkOpened = false;
+window.addEventListener('deeplink-spot', (e) => { deepLinkSpotId = e.detail; openDeepLinkSpot(); });
+function openDeepLinkSpot() {
+  if (!deepLinkSpotId) return;
+  const spot = spots.find((s) => s.id === deepLinkSpotId);
+  if (!spot) return;
+  deepLinkSpotId = null;
+  deepLinkOpened = true; // 全体表示より、送られた土地を優先する
+  mapView.focusSpot(spot);
+}
 
 // ---- パネル開閉 ----
 
@@ -1335,6 +1366,7 @@ function applySpots(next) {
   }
   if (!$('#panel-list').hidden) renderList();
   if (!$('#panel-settings').hidden) renderRefList();
+  openDeepLinkSpot();
 }
 
 // バッジは「本当にサーバーに届いているか」を映す。
@@ -1364,7 +1396,7 @@ function renderDiagnostics() {
 let initialViewDone = mapView.hadSavedView;
 
 function applyInitialView() {
-  if (initialViewDone) return;
+  if (initialViewDone || deepLinkOpened) return;
   if (spots.length) {
     initialViewDone = mapView.fitToSpots(spots);
   }
