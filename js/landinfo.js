@@ -378,7 +378,7 @@ export function facilityLines(facility) {
 export function zoneHtml(zone) {
   if (!zone) return '';
   return zone === '市街化調整区域'
-    ? '<span class="zone-warn">市街化調整区域</span><small class="hz-note">原則、家は建てられない。例外は市に確認</small>'
+    ? '<span class="zone-warn">市街化調整区域</span>'
     : escapeText(zone);
 }
 
