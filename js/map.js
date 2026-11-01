@@ -3,7 +3,7 @@
 
 import {
   BASE_MAPS, HAZARD_LAYERS, HAZARD_ATTRIBUTION, HAZARD_MAX_NATIVE_ZOOM,
-  SCHOOL_LAYERS, ZONE_LAYERS, YOUTO_COLORS, DEFAULT_VIEW, DEFAULT_BASEMAP, statusById,
+  SCHOOL_LAYERS, ZONE_LAYERS, YOUTO_COLORS, DEFAULT_VIEW, DEFAULT_BASEMAP, MAX_ZOOM, statusById,
 } from './config.js';
 import { loadView, saveView, loadBasemap, saveBasemap } from './store.js';
 import { hazardHtml, carMinutes, landInfoRows } from './landinfo.js';
@@ -17,7 +17,7 @@ export class MapView {
     this.hadSavedView = !!saved;
     const view = saved || DEFAULT_VIEW;
     // ズームボタンは出さない(スマホはピンチ、PCはホイール)。縮尺だけ残す。
-    this.map = L.map(containerId, { zoomControl: false }).setView([view.lat, view.lng], view.zoom);
+    this.map = L.map(containerId, { zoomControl: false, maxZoom: MAX_ZOOM }).setView([view.lat, view.lng], view.zoom);
     L.control.scale({ imperial: false }).addTo(this.map);
     // ハザードは乗算で重ねる。塗りの下でも道路や地名が読める。
     const hazardPane = this.map.createPane('hazard');
@@ -29,7 +29,9 @@ export class MapView {
     for (const [key, def] of Object.entries(BASE_MAPS)) {
       this.baseLayers[key] = L.tileLayer(def.url, {
         attribution: def.attribution,
-        maxZoom: def.maxZoom,
+        // 配信が18までのタイルも、引き伸ばして MAX_ZOOM まで寄れるようにする
+        maxNativeZoom: def.maxNativeZoom,
+        maxZoom: MAX_ZOOM,
       });
     }
     this.currentBasemap = BASE_MAPS[loadBasemap()] ? loadBasemap() : DEFAULT_BASEMAP;
@@ -41,7 +43,7 @@ export class MapView {
       this.hazardLayers[def.id] = L.tileLayer(def.url, {
         attribution: HAZARD_ATTRIBUTION,
         maxNativeZoom: HAZARD_MAX_NATIVE_ZOOM,
-        maxZoom: 18,
+        maxZoom: MAX_ZOOM,
         opacity: this.hazardOpacity,
         pane: 'hazard',
       });

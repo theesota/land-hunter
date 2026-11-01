@@ -293,7 +293,7 @@ let enabledIds = loadEnabledLayers() || ALL_LAYERS.filter((d) => d.id !== 'junio
 const schoolKindIds = () => enabledIds.filter((id) => SCHOOL_LAYERS.some((d) => d.id === id));
 const activeIds = new Set(HAZARD_LAYERS.filter((d) => d.defaultOn).map((d) => d.id));
 
-const BASEMAP_LABELS = { bright: '地図', pale: '淡色', photo: '写真' };
+const BASEMAP_LABELS = { std: '標準', bright: '地図', pale: '淡色', photo: '写真' };
 
 function renderBasemapChips() {
   const box = $('#basemap-chips');

@@ -33,6 +33,14 @@
 - [ドラッグはpointerイベント自前] — 根拠: HTML5 DnD は iOS Safari で効かない
 - [並び順は order をFirestoreに保存] — 根拠: 「じぶん」順は家族で共有したい並び(比較の結果)。端末ごとにすると意味が薄い
 
+## §1 完了事項(2026-11-01 追記・claude.aiのチャットから)
+
+- ✅ ベース地図の既定を地理院「標準」(std)に。建物のポリゴンと町名・施設名の注記が入る。ソータの指摘「地図が分かりにくい、伊勢崎の逃げどきマップ(https://isesaki.nigedoki-map.com)ぐらいの情報が欲しい」への対応。チップは 標準 / 地図(OSM Bright) / 淡色 / 写真 の4つ
+- ✅ 既に保存されている選択(localStorage `tasobow.landscout.basemap.v1`)は一度だけ捨てて新しい既定に寄せる(`tasobow.landscout.basemapReset.std` フラグ)。これが無いと3人の端末は古い既定のまま
+- ✅ 配信が z18 までのタイルも引き伸ばして z20 まで寄れるようにした(`maxNativeZoom` + `MAX_ZOOM`)。現地で寄りたいため
+- ✅ テスト `tests/basemaptest.mjs` 追加。`basemaptest` `photoslidetest` は proxy を使わない形(HTTPS_PROXY 経由だと localhost まで届かない)
+- ⚠️ **サンドボックスからタイルサーバ(cyberjapandata / tile.openstreetmap.jp)に届かないので、実際の見た目は未検証。** 標準が本当に2枚目相当の情報量になるかはソータの実機確認待ち。ダメなら次の手は「淡色」か、建物だけ別レイヤーで重ねる
+
 ## §1 完了事項(2026-09-15 追記・claude.aiのチャットから)
 
 - ✅ 写真のスライド表示: サムネをタップ → 全画面で横スワイプ。CSS scroll-snap(ライブラリなし)、1枚ずつ止まる、「2 / 3」表示、✕か余白タップで閉じる。PCは矢印ボタンと←→キー。詳細シート・編集シートどちらのサムネからも、タップした写真から開く

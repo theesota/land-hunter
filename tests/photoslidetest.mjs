@@ -1,9 +1,8 @@
 // 写真のスライド表示と、虫眼鏡ボタンだけの検索
 import { chromium } from 'playwright';
 const fails = [];
-const launch = { executablePath: '/opt/pw-browsers/chromium' };
-if (process.env.HTTPS_PROXY) launch.proxy = { server: process.env.HTTPS_PROXY, bypass: 'localhost,127.0.0.1' };
-const b = await chromium.launch(launch);
+// 外部への通信はすべて route で塞ぐので、プロキシは通さない(通すとlocalhostまで届かなくなる)
+const b = await chromium.launch({ executablePath: '/opt/pw-browsers/chromium' });
 const page = await (await b.newContext({ viewport: { width: 390, height: 780 }, deviceScaleFactor: 2 })).newPage();
 page.on('pageerror', (e) => fails.push('pageerror: ' + e.message));
 await page.route('**/*', (r) => (/localhost|127\.0\.0\.1/.test(r.request().url()) ? r.continue() : r.abort()));

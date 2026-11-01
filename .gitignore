@@ -7,3 +7,7 @@ emu.log
 tests/node_modules/
 tests/*.png
 tests/*.log
+tests/node_modules/
+tests/package.json
+tests/package-lock.json
+tests/*.png

@@ -89,7 +89,16 @@ export function saveView(view) {
 }
 
 // ベース地図の選択(次回起動時も引き継ぐ)
+// 2026-11-01: 既定を地理院「標準」(建物・地名が入る)に変えた。
+// 保存値が残っている端末は古い既定のままになるので、一度だけ捨てて新しい既定に寄せる。
+// 以後に自分で選んだものは普通に残る。
+const BASEMAP_RESET_KEY = 'tasobow.landscout.basemapReset.std';
 export function loadBasemap() {
+  if (!localStorage.getItem(BASEMAP_RESET_KEY)) {
+    localStorage.setItem(BASEMAP_RESET_KEY, '1');
+    localStorage.removeItem(BASEMAP_KEY);
+    return null;
+  }
   return localStorage.getItem(BASEMAP_KEY);
 }
 
