@@ -7,7 +7,6 @@ import {
   initData, getSpots, getMode, getInviteUrl, getBoardId, getStatus, flushPending, switchBoard, takeDeepLinkSpot, getSpotUrl,
   saveSpot, deleteSpot, restoreSpot, purgeSpot, listPhotos, addPhoto, deletePhoto, compressImage,
 } from './data.js';
-import { MapView } from './map.js';
 import { parseCoords, normalizeAddress } from './coords.js';
 import { readGps } from './exif.js';
 
@@ -20,7 +19,12 @@ let currentLandInfo = null; // 新規登録時に自動取得した土地情報
 
 const $ = (sel) => document.querySelector(sel);
 
-const mapView = new MapView('map', {
+// 地図エンジンの切り替え。?g=1 で Google Maps 版(js/gmap.js)、既定は Leaflet 版。
+// 移行中はこの1行だけで行き来できる。
+const USE_GOOGLE = new URLSearchParams(location.search).get('g') === '1';
+const { createMapView } = await import(USE_GOOGLE ? './gmap.js' : './map.js');
+
+const mapView = await createMapView('map', {
   onMapClick: (latlng) => {
     // タップ → 画面下の確認バー → 登録画面。編集中や案内表示中は誤操作防止で反応しない
     if (!$('#sheet-spot').hidden || !$('#sheet-geo').hidden) return;
@@ -293,12 +297,11 @@ let enabledIds = loadEnabledLayers() || ALL_LAYERS.filter((d) => d.id !== 'junio
 const schoolKindIds = () => enabledIds.filter((id) => SCHOOL_LAYERS.some((d) => d.id === id));
 const activeIds = new Set(HAZARD_LAYERS.filter((d) => d.defaultOn).map((d) => d.id));
 
-const BASEMAP_LABELS = { std: '標準', bright: '地図', pale: '淡色', photo: '写真' };
 
 function renderBasemapChips() {
   const box = $('#basemap-chips');
   box.innerHTML = '';
-  for (const [key, label] of Object.entries(BASEMAP_LABELS)) {
+  for (const [key, label] of Object.entries(mapView.basemapLabels)) {
     const btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'mini-chip' + (mapView.currentBasemap === key ? ' active' : '');

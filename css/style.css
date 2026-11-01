@@ -1076,3 +1076,38 @@ html, body {
 .panel-compact .legend-box { margin-top: 2px; font-size: 11px; text-shadow: 0 0 3px #fff; }
 .panel-compact .legend-box summary { padding: 2px 0; }
 .panel-compact .note { font-size: 11px; }
+
+/* ---- Google Maps 版(?g=1)だけで使うもの ---- */
+
+/* AdvancedMarkerElement は中身の「下端中央」が座標に合う。
+   ピンはそれでいいが、点やラベルは中心を合わせたいので半分ずらす */
+.gmap-center { transform: translateY(50%); }
+
+/* 検索結果の一時マーカー(Leaflet版の circleMarker と同じ見た目) */
+.search-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2.5px solid var(--danger);
+}
+
+/* 現在地の青い点 */
+.locate-dot {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #2b6fd6;
+  border: 3px solid #fff;
+  cursor: pointer;
+}
+
+/* 重ねているデータの出典(Googleの著作権表示の左に小さく) */
+.gmap-attribution {
+  font-size: 10px;
+  color: #555;
+  background: rgba(255, 255, 255, 0.75);
+  padding: 1px 6px;
+  margin: 0 4px 2px 0;
+}
+.gmap-attribution a { color: #555; }

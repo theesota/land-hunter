@@ -22,6 +22,7 @@ node popupshot.mjs    # 詳細シートの内容(学区の連動、アイコン)
 node searchtest.mjs   # 緯度経度・URL・郵便番号付き住所の検索
 node cameratest.mjs   # カメラモード(EXIF/現在地/地図タップ)
 node photoslidetest.mjs  # 写真のスライド表示・虫眼鏡だけの検索
+node gmapunit.mjs     # Google版が Leaflet版と同じ口を持っているか(ブラウザ不要)
 node basemaptest.mjs  # ベース地図(既定=地理院標準・切替の記憶・20まで寄れる)
 node uishot.mjs       # 新UI(配置・一覧の並び・ドラッグ)
 node spotsharetest.mjs # 土地1件の共有リンク(要エミュレータ)

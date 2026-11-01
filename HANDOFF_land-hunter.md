@@ -33,6 +33,28 @@
 - [ドラッグはpointerイベント自前] — 根拠: HTML5 DnD は iOS Safari で効かない
 - [並び順は order をFirestoreに保存] — 根拠: 「じぶん」順は家族で共有したい並び(比較の結果)。端末ごとにすると意味が薄い
 
+## §1 完了事項(2026-11-01 その2・Google Maps への移行を開始)
+
+経緯: 地理院「標準」にしても、寄ると荒い。原因は(1)配信が z18 までのタイルを引き伸ばしていること(2)iPhone は3倍密度の画面なのに地理院タイルは標準解像度しか無いこと。ラスタタイルである限り避けられないので、**ソータの判断で Google Maps JavaScript API に移行**すると決めた(MapTiler の無料プランは非商用限定で、将来人に渡す可能性があるため見送り)。
+
+- ✅ **地図エンジンを差し替え式にした。** `js/map.js`(Leaflet) と `js/gmap.js`(Google) が同じ口を持ち、`app.js` が `?g=1` で動的に読み分ける。既定は今まで通り Leaflet なので本番は壊れない
+  - `createMapView(containerId, handlers)` が両方の入口。Google側はAPIの読み込みを待つので非同期
+- ✅ 地図エンジンに依存しない部分を `js/mapcommon.js` に切り出した(詳細シートのHTML、距離計算、面の塗りとラベルの決め方、エスケープ)。Leaflet版も Google版もここを使うので、詳細の見た目は一致する
+- ✅ `js/gmap.js` を実装。app.js が使う19個の口は全部ある(`tests/gmapunit.mjs` で検査)
+  - ピン・ラベル・現在地は AdvancedMarkerElement(中身はただのHTML)。既存の `.spot-pin` などのCSSがそのまま効く
+  - ハザードは `ImageMapType` を overlayMapTypes に。**Leaflet版の乗算(multiply)ではなく半透明**。見え方は実機確認待ち
+  - 学区・用途地域・区域区分は `google.maps.Data`。塗りとラベルは mapcommon 経由で Leaflet版と同じ値
+  - `clickableIcons: false`(店POIがタップを吸って地点登録できなくなるため)、`tilt:0 / heading:0`(上が北固定、コンパス表示と合わせる)、`gestureHandling:'greedy'`
+- ✅ `js/gmap-config.js` を追加。**キーとマップIDは未設定。ソータが Cloud Console で取る**
+- ⚠️ **キーが無いので Google版はまだ一度も動かしていない。** 検証できたのは口の過不足だけ。Leaflet版の回帰(photoslide/basemap/zone/popupshot/search/camera/chip)は通っている
+- ⚠️ **Google版ではベース地図が「地図」「写真」の2つだけ。** 地理院の標準/淡色を Google の地図の上に敷くのは規約上やらない方がいいと判断した。地理院ベースで見たいときは Leaflet版(`?g=` 無し)
+- ⚠️ tasobow ミラーには未反映(このセッションから触れないため)
+
+### 次にやること(キーが届いたら)
+1. `js/gmap-config.js` に `GMAPS_KEY` と `GMAPS_MAP_ID` を入れて `?g=1` で実機確認
+2. 見る順: 地図が出るか → ピンが出るか → 地図タップで登録確認が出るか → ハザードの濃さ → 学区・用途地域のラベル位置 → 現在地
+3. 問題が出た機能だけ Leaflet版と見比べて直す。全部通ったら既定を Google版に切り替え、`?g=0` で Leaflet に戻せるようにする
+
 ## §1 完了事項(2026-11-01 追記・claude.aiのチャットから)
 
 - ✅ ベース地図の既定を地理院「標準」(std)に。建物のポリゴンと町名・施設名の注記が入る。ソータの指摘「地図が分かりにくい、伊勢崎の逃げどきマップ(https://isesaki.nigedoki-map.com)ぐらいの情報が欲しい」への対応。チップは 標準 / 地図(OSM Bright) / 淡色 / 写真 の4つ

@@ -6,10 +6,12 @@ import {
   SCHOOL_LAYERS, ZONE_LAYERS, YOUTO_COLORS, DEFAULT_VIEW, DEFAULT_BASEMAP, MAX_ZOOM, statusById,
 } from './config.js';
 import { loadView, saveView, loadBasemap, saveBasemap } from './store.js';
-import { hazardHtml, carMinutes, landInfoRows } from './landinfo.js';
-import { listingSearchUrl } from './config.js';
+import { detailHtml, escapeHtml, zoneStyle, zoneLabel } from './mapcommon.js';
 
-const ROAD_LABELS = { north: '北', east: '東', south: '南', west: '西' };
+// Google版(gmap.js)と同じ作り方にそろえる。向こうはAPIの読み込みを待つので非同期。
+export async function createMapView(containerId, handlers) {
+  return new MapView(containerId, handlers);
+}
 
 export class MapView {
   constructor(containerId, { onMapClick, onMarkerSelect, onLocationClick }) {
@@ -34,6 +36,7 @@ export class MapView {
         maxZoom: MAX_ZOOM,
       });
     }
+    this.basemapLabels = Object.fromEntries(Object.entries(BASE_MAPS).map(([k, d]) => [k, d.label]));
     this.currentBasemap = BASE_MAPS[loadBasemap()] ? loadBasemap() : DEFAULT_BASEMAP;
     this.baseLayers[this.currentBasemap].addTo(this.map);
 
@@ -91,31 +94,21 @@ export class MapView {
       const res = await fetch(def.file);
       const geojson = await res.json();
       const labels = L.layerGroup();
-      const isZone = def.kind === 'zone';
       // interactive:false が重要。校区の面がタップを吸うと、学区表示中に
       // 地図をタップして地点登録ができなくなる(校名はラベルで確認できる)。
       const polygons = L.geoJSON(geojson, {
         interactive: false,
         style: (feature) => {
-          const pr = feature.properties;
-          // 用途地域は都市計画図と同じ色分けの塗り。境界線は細く
-          if (def.id === 'youto') {
-            const col = YOUTO_COLORS[pr.c] || '#ddd';
-            return { color: col, weight: 1, fillColor: col, fillOpacity: 0.35, opacity: 0.9 };
-          }
-          // 区域区分は「調整区域」だけを目立たせる。市街化区域は境界線のみ薄く。
-          if (isZone) {
-            return pr.layer === 2
-              ? { color: def.color, weight: 2, fillColor: def.color, fillOpacity: 0.10, dashArray: '6 4' }
-              : { color: def.color, weight: 1, fillOpacity: 0, dashArray: '2 4', opacity: 0.5 };
-          }
-          return { color: def.color, weight: 2, fillColor: def.color, fillOpacity: 0.06, dashArray: '4 3' };
+          // 塗りの決め方は mapcommon.js (Google版と共通)。Leafletの名前に直すだけ
+          const st = zoneStyle(def, feature.properties, YOUTO_COLORS);
+          return {
+            color: st.stroke, weight: st.weight, fillColor: st.fill,
+            fillOpacity: st.fillOpacity, dashArray: st.dash || undefined,
+            opacity: st.fillOpacity === 0 ? 0.5 : 0.9,
+          };
         },
         onEachFeature: (feature, l) => {
-          const pr = feature.properties;
-          const text = def.id === 'youto' ? `${pr.n.replace(/地域$/, '')} ${pr.bcr}/${pr.far}`
-            : isZone ? (pr.layer === 2 ? '市街化調整区域' : '')
-              : pr.name;
+          const text = zoneLabel(def, feature.properties);
           if (!text) return;
           // 面の中心にラベル。中心置きなら形が歪な区域でもエリア外に出にくい。
           labels.addLayer(L.marker(l.getBounds().getCenter(), {
@@ -179,61 +172,14 @@ export class MapView {
     this.markers.set(spot.id, marker);
   }
 
-  // 距離+徒歩/車の目安。徒歩は30分(2.4km)を超えたら現実的でないので省く。
-  // 距離と時間を別々に返す(詳細では列を揃えて並べる)
-  _distanceParts(a, b) {
-    const d = this.map.distance([a.lat, a.lng], [b.lat, b.lng]);
-    const dist = d < 1000 ? `${Math.round(d)}m` : `${(d / 1000).toFixed(1)}km`;
-    const walk = d <= 2400 ? `徒歩${Math.ceil(d / 80)}分・` : '';
-    return { dist, time: `${walk}車${carMinutes(d)}分` };
-  }
-
   // 設定で表示ONにしている学区の種類('elementary'/'junior')。ポップアップの学区行を絞る。
   setSchoolKinds(ids) {
     this.schoolKinds = new Set(ids);
   }
 
-  // 詳細シートの中身。クラス名は以前のポップアップ用CSSをそのまま使う。
+  // 詳細シートの中身(組み立ては mapcommon.js。Google版と同じものが出る)
   detailHtml(spot) {
-    const st = statusById(spot.status);
-    const stars = spot.rating ? '★'.repeat(spot.rating) : '';
-    // Google公式のMaps URLs形式。その地点のストリートビューを直接開く。
-    const streetview = `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${spot.lat},${spot.lng}`;
-    const memo = spot.memo ? `<p class="popup-memo">${escapeHtml(spot.memo)}</p>` : '';
-    const roads = (spot.roads || []).map((d) => ROAD_LABELS[d]).filter(Boolean);
-    const rowsHtml = landInfoRows(spot.info, { address: spot.address, schoolKinds: this.schoolKinds, roads, deal: spot });
-    const infoHtml = rowsHtml ? `<div class="popup-info">${rowsHtml}</div>` : '';
-    // 基準地点(自宅・駅など)までの直線距離。基準地点自身のポップアップには出さない。
-    const refs = (this.spots || []).filter((s) => s.status === 'reference' && s.id !== spot.id);
-    // 基準地点ごとに「名前 | 距離 | 時間 | 車ルート」を列で揃える
-    const dists = spot.status !== 'reference' && refs.length
-      ? `<div class="popup-dists dist-grid">${refs.map((r) => {
-        const drive = `https://www.google.com/maps/dir/?api=1&origin=${r.lat},${r.lng}&destination=${spot.lat},${spot.lng}&travelmode=driving`;
-        const { dist, time } = this._distanceParts(spot, r);
-        return `<span class="d-name">${escapeHtml(r.name)}</span><span class="d-km">${dist}</span><span class="d-time">${time}</span><a href="${drive}" target="_blank" rel="noopener" class="popup-drive">車ルート</a>`;
-      }).join('')}</div>` : '';
-    // 物件URLがあればそれ。無ければ住所で「探す」リンク(売り出し中と断定はしない)
-    const addr = spot.address || (spot.info && spot.info.address) || '';
-    const listing = spot.url
-      ? `<a href="${escapeHtml(spot.url)}" target="_blank" rel="noopener" class="popup-listing">物件ページ</a>`
-      : (addr ? `<a href="${listingSearchUrl(addr)}" target="_blank" rel="noopener" class="popup-listing ghost">売地をネットで探す</a>` : '');
-    return `
-      <div class="popup">
-        <strong>${escapeHtml(spot.name)}</strong>
-        <div class="popup-meta">
-          <span class="popup-status" style="background:${st.color}">${st.label}</span>
-          <span class="popup-stars">${stars}</span>
-        </div>
-        ${infoHtml}
-        ${memo}
-        ${dists}
-        <div class="popup-photos" data-spot-id="${spot.id}"></div>
-        ${listing}
-        <div class="popup-links">
-          <a href="${streetview}" target="_blank" rel="noopener">ストリートビュー</a>
-        </div>
-        <button type="button" class="popup-edit">編集</button>
-      </div>`;
+    return detailHtml(spot, { spots: this.spots || [], schoolKinds: this.schoolKinds });
   }
 
   focusSpot(spot) {
@@ -360,10 +306,4 @@ export class MapView {
     );
     return true;
   }
-}
-
-function escapeHtml(str) {
-  return str.replace(/[&<>"']/g, (c) => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
-  }[c]));
 }

@@ -7,6 +7,7 @@ export const MAX_ZOOM = 20;
 export const BASE_MAPS = {
   // 地理院タイル「標準」。建物のポリゴン、町名・施設名の注記が入る。
   std: {
+    label: '標準',
     url: 'https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png',
     attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
     maxNativeZoom: 18,
@@ -14,17 +15,20 @@ export const BASE_MAPS = {
   // OSMFJ(OpenStreetMap Foundation Japan)配信の OSM Bright 日本語版。店名が強い。
   // ライセンス CC-BY、表記は ©OpenStreetMap Contributors (https://wiki.openstreetmap.org/wiki/Japan/OSMFJ_Tileserver)
   bright: {
+    label: '地図',
     url: 'https://tile.openstreetmap.jp/styles/osm-bright-ja/{z}/{x}/{y}.png',
     attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors, <a href="https://tile.openstreetmap.jp/" target="_blank">OSMFJ</a>',
     maxNativeZoom: 19,
   },
   // 地理院タイル「淡色」。標準と同じ中身の薄い版。ハザードを重ねたときに塗りが読みやすい。
   pale: {
+    label: '淡色',
     url: 'https://cyberjapandata.gsi.go.jp/xyz/pale/{z}/{x}/{y}.png',
     attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
     maxNativeZoom: 18,
   },
   photo: {
+    label: '写真',
     url: 'https://cyberjapandata.gsi.go.jp/xyz/seamlessphoto/{z}/{x}/{y}.jpg',
     attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html" target="_blank">地理院タイル</a>',
     maxNativeZoom: 18,
@@ -124,7 +128,7 @@ export const TOKUTEI_FILE = 'data/zone/isesaki_tokutei.geojson';
 export const DEFAULT_BASEMAP = 'std';
 
 // 反映確認用の版。deployのたびに日付+連番で上げる(設定の同期欄に出る)
-export const BUILD = '2026-11-01a';
+export const BUILD = '2026-11-01b';
 
 // 地域検索(国土地理院 住所検索API)。地名・駅名・施設名・住所を引ける。キー不要。
 export const GEOCODER_URL = 'https://msearch.gsi.go.jp/address-search/AddressSearch?q=';
